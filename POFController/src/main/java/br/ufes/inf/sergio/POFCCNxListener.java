@@ -129,14 +129,14 @@ public class POFCCNxListener implements IOFSwitchListener {
 		ins = new OFInstructionApplyActions();
 		ArrayList<OFAction> actionList = new ArrayList<OFAction>();
 		OFActionSetField action = new OFActionSetField();
-		OFMatch20 match20 = pofManager.iGetMatchField((short)2); // Dmac
+		OFMatch20 match20 = pofManager.iGetMatchField((short)3); // Dmac
 		value = DatatypeConverter.parseHexBinary("001fbbbbbbbb");
 		mask = DatatypeConverter.parseHexBinary("ffffffffffff");
 		matchX = new OFMatchX(match20, value, mask);
 		((OFActionSetField) action).setFieldSetting(matchX);
 		actionList.add(action);
 		action = new OFActionSetField();
-		match20 = pofManager.iGetMatchField((short)3); // Smac
+		match20 = pofManager.iGetMatchField((short)4); // Smac
 		value = DatatypeConverter.parseHexBinary("aaaaaaaaaaaa");
 		mask = DatatypeConverter.parseHexBinary("ffffffffffff");
 		matchX = new OFMatchX(match20, value, mask);

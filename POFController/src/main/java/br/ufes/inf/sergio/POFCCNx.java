@@ -89,6 +89,9 @@ public class POFCCNx implements IOFMessageListener, IFloodlightModule, IPOFCCNxS
 		int switchId = pofManager.iGetAllSwitchID().get(0); // FIXME descobrir switch mais proximo
 		OFFlowTable n = listener.getCCNxFlowTable();
 		
+		ArrayList<OFMatchX> matchXList = new ArrayList<OFMatchX>();
+		OFMatchX matchX = new OFMatchX(n.getMatchFieldList().get(0), new byte[2], new byte[2]);
+		matchXList.add(matchX);
 		// faz matching do name
 		byte[] value = new byte[POFCCNxListener.CCNX_MAX_NAME_SIZE/8];
 		byte[] mask = new byte[POFCCNxListener.CCNX_MAX_NAME_SIZE/8];
@@ -105,11 +108,9 @@ public class POFCCNx implements IOFMessageListener, IFloodlightModule, IPOFCCNxS
 			value[i] = str[i];
 			mask[i] = (byte) 0xff;
 		}
-		OFMatchX matchX = new OFMatchX(n.getMatchFieldList().get(1), value, mask);
-		ArrayList<OFMatchX> matchXList = new ArrayList<OFMatchX>();
+		matchX = new OFMatchX(n.getMatchFieldList().get(1), value, mask);
 		matchXList.add(matchX);
-		matchX = new OFMatchX(n.getMatchFieldList().get(0), new byte[2], new byte[2]);
-		matchXList.add(matchX);
+		
 		// output
 		List<OFInstruction> insList = new ArrayList<OFInstruction>();
 		OFInstruction ins = new OFInstructionApplyActions();
