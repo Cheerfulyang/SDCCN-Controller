@@ -76,12 +76,14 @@ public class POFCCNxListener implements IOFSwitchListener {
 		fieldList = new ArrayList<OFMatch20>();
 		matchXList = new ArrayList<OFMatchX>();
 		// create protocol
-		fieldId = pofManager.iNewField("name", (short)CCNX_MAX_NAME_SIZE, (short)0);
+		fieldId = pofManager.iNewField("type", (short) 16, (short)0);
 		fieldList.add(pofManager.iGetMatchField(fieldId));
-		pofManager.iAddProtocol("CCNx name", fieldList);
+		fieldId = pofManager.iNewField("name", (short)CCNX_MAX_NAME_SIZE, (short)16);
+		fieldList.add(pofManager.iGetMatchField(fieldId));
+		pofManager.iAddProtocol("CCNx", fieldList);
 		// configure flow table
 		globalTableId = pofManager.iAddFlowTable(switchId, CCNX_TABLE_NAME, OFTableType.OF_LPM_TABLE.getValue(),
-				(short)CCNX_MAX_NAME_SIZE, TABLE_SIZE, (byte)fieldList.size(), fieldList);
+				(short)(CCNX_MAX_NAME_SIZE+16), TABLE_SIZE, (byte)fieldList.size(), fieldList);
 		if (globalTableId == -1){
 			logger.error("Failed to create CCNx flow table!");
 			System.exit(1);

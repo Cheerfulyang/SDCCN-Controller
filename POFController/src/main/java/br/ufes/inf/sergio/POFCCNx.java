@@ -105,11 +105,12 @@ public class POFCCNx implements IOFMessageListener, IFloodlightModule, IPOFCCNxS
 			value[i] = str[i];
 			mask[i] = (byte) 0xff;
 		}
-		OFMatchX matchX = new OFMatchX(n.getMatchFieldList().get(0), value, mask);
+		OFMatchX matchX = new OFMatchX(n.getMatchFieldList().get(1), value, mask);
 		ArrayList<OFMatchX> matchXList = new ArrayList<OFMatchX>();
 		matchXList.add(matchX);
-		// cria acoes
-		// primeira - output
+		matchX = new OFMatchX(n.getMatchFieldList().get(0), new byte[2], new byte[2]);
+		matchXList.add(matchX);
+		// output
 		List<OFInstruction> insList = new ArrayList<OFInstruction>();
 		OFInstruction ins = new OFInstructionApplyActions();
 		ArrayList<OFAction> actionList = new ArrayList<OFAction>();
