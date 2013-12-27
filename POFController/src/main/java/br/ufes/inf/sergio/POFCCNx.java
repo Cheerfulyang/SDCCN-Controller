@@ -6,8 +6,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import org.ccnx.ccn.impl.CCNFlowControl.SaveType;
-import org.ccnx.ccn.io.content.CCNStringObject;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.MalformedContentNameStringException;
 import org.openflow.protocol.OFMatchX;
@@ -94,14 +92,11 @@ public class POFCCNx implements IOFMessageListener, IFloodlightModule, IPOFCCNxS
 		// faz matching do name
 		byte[] value = new byte[POFCCNxListener.CCNX_MAX_NAME_SIZE/8];
 		byte[] mask = new byte[POFCCNxListener.CCNX_MAX_NAME_SIZE/8];
-		//byte[] str = name.getBytes();
 		byte[] str = null;
 		ContentName cname = null;
-		CCNStringObject ccnstr = null;
 		try {
 			cname = ContentName.fromURI("ccnx:/"+name);
-			ccnstr = new CCNStringObject(cname, (String)null, SaveType.RAW, null);
-			str = ccnstr.;
+			str = cname.encode();
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
