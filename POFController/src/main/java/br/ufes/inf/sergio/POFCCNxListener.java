@@ -148,7 +148,9 @@ public class POFCCNxListener implements IOFSwitchListener {
 		// ========================
 		ins = new OFInstructionGotoTable();
 		((OFInstructionGotoTable)ins).setNextTableId(nextTableId);
-		((OFInstructionGotoTable)ins).setPacketOffset((short) 14);
+		// set packet offset Ethernet + IP + UDP
+		//((OFInstructionGotoTable)ins).setPacketOffset((short) 14);
+		((OFInstructionGotoTable)ins).setPacketOffset((short) (14 + 20 + 8));
 		insList.add(ins);
 		pofManager.iAddFlowEntry(switchId, globalTableId, (byte)matchXList.size(), matchXList, 
 				(byte)insList.size(), insList, (short) 1);
