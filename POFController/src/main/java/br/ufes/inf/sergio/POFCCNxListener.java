@@ -9,8 +9,10 @@ import javax.xml.bind.DatatypeConverter;
 
 import org.openflow.protocol.OFMatch20;
 import org.openflow.protocol.OFMatchX;
+import org.openflow.protocol.OFPort;
 import org.openflow.protocol.OFPortStatus;
 import org.openflow.protocol.action.OFAction;
+import org.openflow.protocol.action.OFActionOutput;
 import org.openflow.protocol.action.OFActionSetField;
 import org.openflow.protocol.instruction.OFInstruction;
 import org.openflow.protocol.instruction.OFInstructionApplyActions;
@@ -49,6 +51,9 @@ public class POFCCNxListener implements IOFSwitchListener {
 		for (int portId : portIdList){
         	OFPortStatus portStatus = pofManager.iGetPortStatus(switchId, portId);
             //if (portStatus.getDesc().getName().equals("veth0")){
+            //	pofManager.iSetPortOpenFlowEnable(switchId, portId, (byte)1);
+            //	continue;
+            //}
             if (portStatus.getDesc().getName().matches("^s\\d+-eth\\d+$")){
         		pofManager.iSetPortOpenFlowEnable(switchId, portId, (byte)1);
             	//break;
@@ -63,7 +68,6 @@ public class POFCCNxListener implements IOFSwitchListener {
 		OFMatchX matchX;
 		OFInstruction ins;
 		short fieldId;
-		int size;
 		byte[] value;
 		byte[] mask;
 		byte globalTableId, nextTableId;
@@ -97,8 +101,6 @@ public class POFCCNxListener implements IOFSwitchListener {
 		 */
 
 		fieldList = new ArrayList<OFMatch20>();
-		matchXList = new ArrayList<OFMatchX>();
-		size = 0;
 		// create protocol
 		fieldId = pofManager.iNewField("Dmac", (short)48, (short)0);
 		fieldList.add(pofManager.iGetMatchField(fieldId));
@@ -107,27 +109,54 @@ public class POFCCNxListener implements IOFSwitchListener {
 		fieldId = pofManager.iNewField("Eth Type", (short)16, (short)96);
 		fieldList.add(pofManager.iGetMatchField(fieldId));
 		pofManager.iAddProtocol("Ethernet sem VLAN", fieldList);
-		// create matches. Will match everything
-		for (OFMatch20 m : fieldList) {
-			value = new byte[m.getLength()/8];
-			mask = new byte[m.getLength()/8];
-			matchX = new OFMatchX(m, value, mask);
-			matchXList.add(matchX);
-			size += m.getLength();
-		}
+		
 		// configure flow table
 		nextTableId = globalTableId;
 		globalTableId = pofManager.iAddFlowTable(switchId, IPMService.FIRST_ENTRY_TABLE_NAME,
-				OFTableType.OF_MM_TABLE.getValue(), (short)size, TABLE_SIZE, (byte)fieldList.size(),
+				OFTableType.OF_MM_TABLE.getValue(), (short)112, TABLE_SIZE, (byte)fieldList.size(),
 				fieldList);
 		if (globalTableId == -1){
 			logger.error("Failed to create flow table!");
 			System.exit(1);
 		}
-		// add flow mod
+		// add flow mod for ARP
+		// create matches. Will match everything
+		matchXList = new ArrayList<OFMatchX>();
+		for (OFMatch20 m : fieldList) {
+			value = new byte[m.getLength()/8];
+			mask = new byte[m.getLength()/8];
+			if (m.getFieldName().equals("Eth Type")){
+				value = DatatypeConverter.parseHexBinary("0806");
+				mask = DatatypeConverter.parseHexBinary("ffff");
+			}
+			matchX = new OFMatchX(m, value, mask);
+			matchXList.add(matchX);
+		}
+		insList = new ArrayList<OFInstruction>();
+		ins = new OFInstructionApplyActions();
+		ArrayList<OFAction> actionList = new ArrayList<OFAction>();
+		OFAction action = new OFActionOutput();
+		((OFActionOutput)action).setPortId(OFPort.OFPP_FLOOD.getValue());
+		((OFActionOutput)action).setPacketOffset((short)0);
+		actionList.add(action);
+		((OFInstructionApplyActions) ins).setActionList(actionList);
+		((OFInstructionApplyActions) ins).setActionNum((byte)actionList.size());
+		insList.add(ins);
+		pofManager.iAddFlowEntry(switchId, globalTableId, (byte)matchXList.size(), matchXList, 
+				(byte)insList.size(), insList, (short) 1);
+		
+		// add flow mod for CCNx
+		// create matches. Will match everything
+		matchXList = new ArrayList<OFMatchX>();
+		for (OFMatch20 m : fieldList) {
+			value = new byte[m.getLength()/8];
+			mask = new byte[m.getLength()/8];
+			matchX = new OFMatchX(m, value, mask);
+			matchXList.add(matchX);
+		}
 		insList = new ArrayList<OFInstruction>();
 		// ========== TESTE - muda mac para outra coisa qualquer
-		ins = new OFInstructionApplyActions();
+		/*ins = new OFInstructionApplyActions();
 		ArrayList<OFAction> actionList = new ArrayList<OFAction>();
 		OFActionSetField action = new OFActionSetField();
 		OFMatch20 match20 = pofManager.iGetMatchField((short)3); // Dmac
@@ -145,7 +174,7 @@ public class POFCCNxListener implements IOFSwitchListener {
 		actionList.add(action);
 		((OFInstructionApplyActions) ins).setActionList(actionList);
 		((OFInstructionApplyActions) ins).setActionNum((byte)actionList.size());
-		insList.add(ins);
+		insList.add(ins);*/
 		// ========================
 		ins = new OFInstructionGotoTable();
 		((OFInstructionGotoTable)ins).setNextTableId(nextTableId);
