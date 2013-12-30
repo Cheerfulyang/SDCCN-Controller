@@ -10,6 +10,7 @@ import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.MalformedContentNameStringException;
 import org.openflow.protocol.OFMatchX;
 import org.openflow.protocol.OFMessage;
+import org.openflow.protocol.OFPort;
 import org.openflow.protocol.OFPortStatus;
 import org.openflow.protocol.OFType;
 import org.openflow.protocol.action.OFAction;
@@ -121,12 +122,14 @@ public class POFCCNx implements IOFMessageListener, IFloodlightModule, IPOFCCNxS
         for (int portId : portIdList){
         	OFPortStatus portStatus = pofManager.iGetPortStatus(switchId, portId);
             //logger.debug("PortStatus [id=" + portId + "]: " + portStatus.toString());
-            if (portStatus.getDesc().getName().equals("veth0")){
+            //if (portStatus.getDesc().getName().equals("veth0")){
+        	if (portStatus.getDesc().getName().matches("^s\\d+-eth\\d+$")){ //FIXME!!!
             	outputPortId = portId;
             	break;
             }
         }
-        ((OFActionOutput)action).setPortId(outputPortId);
+        //((OFActionOutput)action).setPortId(outputPortId);
+        ((OFActionOutput)action).setPortId(OFPort.OFPP_FLOOD.getValue());
 		((OFActionOutput)action).setPacketOffset((short)0);
 		actionList.add(action);
 		((OFInstructionApplyActions) ins).setActionList(actionList);

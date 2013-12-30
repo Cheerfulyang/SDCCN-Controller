@@ -48,9 +48,10 @@ public class POFCCNxListener implements IOFSwitchListener {
 		List<Integer> portIdList = pofManager.iGetAllPortId(switchId);
 		for (int portId : portIdList){
         	OFPortStatus portStatus = pofManager.iGetPortStatus(switchId, portId);
-            if (portStatus.getDesc().getName().equals("veth0")){
+            //if (portStatus.getDesc().getName().equals("veth0")){
+            if (portStatus.getDesc().getName().matches("^s\\d+-eth\\d+$")){
         		pofManager.iSetPortOpenFlowEnable(switchId, portId, (byte)1);
-            	break;
+            	//break;
             }
         }
 	}
