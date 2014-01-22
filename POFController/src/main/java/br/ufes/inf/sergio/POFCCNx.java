@@ -3,6 +3,7 @@ package br.ufes.inf.sergio;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
@@ -105,7 +106,7 @@ public class POFCCNx implements IOFMessageListener, IFloodlightModule, IPOFCCNxS
 			e.printStackTrace();
 		}
 		logger.debug("NAME = "+String.valueOf(cname));
-		for (int i = 0; i < str.length; i++){
+		for (int i = 0; i < str.length - 2; i++){ // - 2 para eliminar 2 bytes de lixo no final
 			value[i] = str[i];
 			mask[i] = (byte) 0xff;
 		}
