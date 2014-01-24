@@ -63,13 +63,8 @@ public class POFCCNxListener implements IOFSwitchListener {
 		List<Integer> portIdList = pofManager.iGetAllPortId(switchId);
 		for (int portId : portIdList){
         	OFPortStatus portStatus = pofManager.iGetPortStatus(switchId, portId);
-            //if (portStatus.getDesc().getName().equals("veth0")){
-            //	pofManager.iSetPortOpenFlowEnable(switchId, portId, (byte)1);
-            //	continue;
-            //}
             if (portStatus.getDesc().getName().matches("^s\\d+-eth\\d+$")){
         		pofManager.iSetPortOpenFlowEnable(switchId, portId, (byte)1);
-            	//break;
             }
         }
 	}
@@ -134,6 +129,7 @@ public class POFCCNxListener implements IOFSwitchListener {
 			logger.error("Failed to create CCNx first flow table!");
 			System.exit(1);
 		}
+		firstCCnxTableId = globalTableId;
 		
 		/*
 		 *  Create CCNx Interest Table. 
@@ -146,7 +142,6 @@ public class POFCCNxListener implements IOFSwitchListener {
 			logger.error("Failed to create CCNx Interest Flow Table!");
 			System.exit(1);
 		}
-		firstCCnxTableId = nextTableId;
 		ccnx_interest_table = pofManager.iGetFlowTable(switchId, nextTableId);
 		// add flow entry in CCNx First Flow Table for interests
 		insList = new ArrayList<OFInstruction>();
@@ -179,7 +174,7 @@ public class POFCCNxListener implements IOFSwitchListener {
 		insList = new ArrayList<OFInstruction>();
 		ins = new OFInstructionGotoTable();
 		((OFInstructionGotoTable)ins).setNextTableId(nextTableId);
-		((OFInstructionGotoTable)ins).setPacketOffset((short)(2+17)); // type + Signature
+		((OFInstructionGotoTable)ins).setPacketOffset((short)(2+136)); // type + Signature
 		insList.add(ins);
 		matchXList = new ArrayList<OFMatchX>();
 		m = fieldMap.get("type");
