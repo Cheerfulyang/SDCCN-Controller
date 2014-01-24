@@ -9,6 +9,7 @@ import java.util.Map;
 
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.MalformedContentNameStringException;
+import org.openflow.protocol.OFMatch20;
 import org.openflow.protocol.OFMatchX;
 import org.openflow.protocol.OFMessage;
 import org.openflow.protocol.OFPort;
@@ -19,6 +20,7 @@ import org.openflow.protocol.action.OFActionOutput;
 import org.openflow.protocol.instruction.OFInstruction;
 import org.openflow.protocol.instruction.OFInstructionApplyActions;
 import org.openflow.protocol.table.OFFlowTable;
+import org.openflow.protocol.table.OFTableType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -87,14 +89,20 @@ public class POFCCNx implements IOFMessageListener, IFloodlightModule, IPOFCCNxS
 	@Override
 	public int addName(String name){
 		logger.debug("ADDING NAME "+name);
-		// pega informacoes do switch e tabela
+		int res = 0;
 		int switchId = pofManager.iGetAllSwitchID().get(0); // FIXME descobrir switch mais proximo
-		OFFlowTable n = listener.getCCNxFlowTable();
-		
-		ArrayList<OFMatchX> matchXList = new ArrayList<OFMatchX>();
-		OFMatchX matchX = new OFMatchX(n.getMatchFieldList().get(0), new byte[2], new byte[2]);
-		matchXList.add(matchX);
+		Map<String, OFMatch20> fieldMap = listener.getFieldMap();
+		byte tableId = 0;
+		 
+		/*
+		 * Install flow in CCNx Interest and Content Tables
+		 */
+		OFFlowTable[] ofTables = new OFFlowTable[2];
+		ofTables[0] = listener.getCCNxInterestTable();
+		ofTables[1] = listener.getCCNxContentTable();
+
 		// faz matching do name
+		ArrayList<OFMatchX> matchXList = new ArrayList<OFMatchX>();
 		byte[] value = new byte[POFCCNxListener.CCNX_MAX_NAME_SIZE/8];
 		byte[] mask = new byte[POFCCNxListener.CCNX_MAX_NAME_SIZE/8];
 		byte[] str = null;
@@ -110,7 +118,7 @@ public class POFCCNx implements IOFMessageListener, IFloodlightModule, IPOFCCNxS
 			value[i] = str[i];
 			mask[i] = (byte) 0xff;
 		}
-		matchX = new OFMatchX(n.getMatchFieldList().get(1), value, mask);
+		OFMatchX matchX = new OFMatchX(fieldMap.get("name"), value, mask);
 		matchXList.add(matchX);
 		
 		// output
@@ -118,27 +126,20 @@ public class POFCCNx implements IOFMessageListener, IFloodlightModule, IPOFCCNxS
 		OFInstruction ins = new OFInstructionApplyActions();
 		ArrayList<OFAction> actionList = new ArrayList<OFAction>();
 		OFAction action = new OFActionOutput();
-		List<Integer> portIdList = pofManager.iGetAllPortId(switchId);
-		int outputPortId = 0;
-        for (int portId : portIdList){
-        	OFPortStatus portStatus = pofManager.iGetPortStatus(switchId, portId);
-            //logger.debug("PortStatus [id=" + portId + "]: " + portStatus.toString());
-            //if (portStatus.getDesc().getName().equals("veth0")){
-        	if (portStatus.getDesc().getName().matches("^s\\d+-eth\\d+$")){ //FIXME!!!
-            	outputPortId = portId;
-            	break;
-            }
-        }
-        //((OFActionOutput)action).setPortId(outputPortId);
         ((OFActionOutput)action).setPortId(OFPort.OFPP_FLOOD.getValue());
 		((OFActionOutput)action).setPacketOffset((short)0);
 		actionList.add(action);
 		((OFInstructionApplyActions) ins).setActionList(actionList);
 		((OFInstructionApplyActions) ins).setActionNum((byte)actionList.size());
 		insList.add(ins);
-		// segunda - TODO
-		return pofManager.iAddFlowEntry(switchId, (byte)10, (byte)matchXList.size(), matchXList, 
-				(byte)insList.size(), insList, (short) 1); //FIXME 10
+		
+		// add flow table
+		for (OFFlowTable n : ofTables){
+			tableId = pofManager.parseToGlobalTableId(switchId, OFTableType.OF_LPM_TABLE.getValue(), n.getTableId());
+			res |= pofManager.iAddFlowEntry(switchId, tableId, (byte)matchXList.size(), matchXList, 
+					(byte)insList.size(), insList, (short) 1);
+		}
+		return res;
 	}
 
 	@Override

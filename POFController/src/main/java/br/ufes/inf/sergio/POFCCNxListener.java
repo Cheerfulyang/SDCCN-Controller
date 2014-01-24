@@ -3,7 +3,9 @@ package br.ufes.inf.sergio;
 import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.IOFSwitchListener;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import javax.xml.bind.DatatypeConverter;
 
@@ -30,19 +32,30 @@ public class POFCCNxListener implements IOFSwitchListener {
 	protected static Logger logger;
 	protected final int TABLE_SIZE = 128; //FIXME AUMENTAR?
 	public final static int CCNX_MAX_NAME_SIZE = 128; //FIXME AUMENTAR MULTIPLO DE 8 - POREM ESTA DANDO ERRO
-	public final static String CCNX_TABLE_NAME = "CCNx Flow table";
-	protected OFFlowTable ccnx_flow_table = null;
+	public final static String CCNX_FIRST_TABLE_NAME = "CCNx First Flow table";
+	protected OFFlowTable ccnx_interest_table = null;
+	protected OFFlowTable ccnx_content_table = null;
+	protected Map<String, OFMatch20> fieldMap = null;
 	
 	public POFCCNxListener() {
 		logger = LoggerFactory.getLogger(POFCCNxListener.class);
+		fieldMap = new HashMap<String, OFMatch20>(); 
 	}
 	
 	public void setPofManager(IPMService manager) {
 		pofManager = manager;
 	}
 	
-	public OFFlowTable getCCNxFlowTable() {
-		return this.ccnx_flow_table;
+	public OFFlowTable getCCNxInterestTable() {
+		return this.ccnx_interest_table;
+	}
+	
+	public OFFlowTable getCCNxContentTable() {
+		return this.ccnx_content_table;
+	}
+	
+	public Map<String, OFMatch20> getFieldMap() {
+		return this.fieldMap;
 	}
 
 	private void enableDataPort(int switchId) { // FIXME PEGAR DO ARQUIVO DE CONF
@@ -70,47 +83,121 @@ public class POFCCNxListener implements IOFSwitchListener {
 		short fieldId;
 		byte[] value;
 		byte[] mask;
-		byte globalTableId, nextTableId;
+		byte globalTableId, nextTableId, firstCCnxTableId;
+		OFMatch20 m = null;
 		
 		/*
-		 *  Create CCNx Table. 
-		 *  This will match CCNx names. For now we have chosen a max size of 1000 bytes 
-		 *  to match ccnx names but this can be easyly modified
-		 *  
+		 * Create CCNx Protocols
+		 * Type is a separate protocol because it will be in a different table
+		 * and Content packets have Signature before Name so offset if different
 		 */
 		fieldList = new ArrayList<OFMatch20>();
-		matchXList = new ArrayList<OFMatchX>();
-		// create protocol
 		fieldId = pofManager.iNewField("type", (short) 16, (short)0);
-		fieldList.add(pofManager.iGetMatchField(fieldId));
-		fieldId = pofManager.iNewField("name", (short)CCNX_MAX_NAME_SIZE, (short)16);
-		fieldList.add(pofManager.iGetMatchField(fieldId));
-		pofManager.iAddProtocol("CCNx", fieldList);
-		// configure flow table
-		globalTableId = pofManager.iAddFlowTable(switchId, CCNX_TABLE_NAME, OFTableType.OF_LPM_TABLE.getValue(),
-				(short)(CCNX_MAX_NAME_SIZE+16), TABLE_SIZE, (byte)fieldList.size(), fieldList);
+		m = pofManager.iGetMatchField(fieldId);
+		fieldList.add(m);
+		fieldMap.put("type", m);
+		pofManager.iAddProtocol("CCNx Type", fieldList);
+		fieldList = new ArrayList<OFMatch20>();
+		fieldId = pofManager.iNewField("name", (short)CCNX_MAX_NAME_SIZE, (short)0);
+		m = pofManager.iGetMatchField(fieldId);
+		fieldList.add(m);
+		fieldMap.put("name", m);	
+		pofManager.iAddProtocol("CCNx Name", fieldList);
+		
+		/*
+		 * Create Ethernet protocol
+		 */
+		fieldList = new ArrayList<OFMatch20>();
+		fieldId = pofManager.iNewField("Dmac", (short)48, (short)0);
+		m = pofManager.iGetMatchField(fieldId);
+		fieldList.add(m);
+		fieldMap.put("Dmac", m);
+		fieldId = pofManager.iNewField("Smac", (short)48, (short)48);
+		m = pofManager.iGetMatchField(fieldId);
+		fieldList.add(m);
+		fieldMap.put("Smac", m);
+		fieldId = pofManager.iNewField("Eth Type", (short)16, (short)96);
+		m = pofManager.iGetMatchField(fieldId);
+		fieldList.add(m);
+		fieldMap.put("Eth Type", m);
+		pofManager.iAddProtocol("Ethernet sem VLAN", fieldList);
+		
+		/*
+		 *  Create First CCNx Table. 
+		 *  This will match CCNx type (Interest or Content) and forward to appropriate table.
+		 */
+		fieldList = new ArrayList<OFMatch20>();
+		fieldList.add(fieldMap.get("type"));
+		globalTableId = pofManager.iAddFlowTable(switchId, CCNX_FIRST_TABLE_NAME, OFTableType.OF_LPM_TABLE.getValue(),
+				(short)16, TABLE_SIZE, (byte)fieldList.size(), fieldList);
 		if (globalTableId == -1){
-			logger.error("Failed to create CCNx flow table!");
+			logger.error("Failed to create CCNx first flow table!");
 			System.exit(1);
 		}
-		ccnx_flow_table = pofManager.iGetFlowTable(switchId, globalTableId);
+		
+		/*
+		 *  Create CCNx Interest Table. 
+		 */
+		fieldList = new ArrayList<OFMatch20>();
+		fieldList.add(fieldMap.get("name"));
+		nextTableId = pofManager.iAddFlowTable(switchId, "CCNx Interest Flow Table", OFTableType.OF_LPM_TABLE.getValue(),
+				(short)CCNX_MAX_NAME_SIZE, TABLE_SIZE, (byte)fieldList.size(), fieldList);
+		if (nextTableId == -1){
+			logger.error("Failed to create CCNx Interest Flow Table!");
+			System.exit(1);
+		}
+		firstCCnxTableId = nextTableId;
+		ccnx_interest_table = pofManager.iGetFlowTable(switchId, nextTableId);
+		// add flow entry in CCNx First Flow Table for interests
+		insList = new ArrayList<OFInstruction>();
+		ins = new OFInstructionGotoTable();
+		((OFInstructionGotoTable)ins).setNextTableId(nextTableId);
+		((OFInstructionGotoTable)ins).setPacketOffset((short)2);
+		insList.add(ins);
+		matchXList = new ArrayList<OFMatchX>();
+		m = fieldMap.get("type");
+		value = DatatypeConverter.parseHexBinary("01d2");
+		mask = DatatypeConverter.parseHexBinary("ffff");
+		matchX = new OFMatchX(m, value, mask);
+		matchXList.add(matchX);
+		pofManager.iAddFlowEntry(switchId, globalTableId, (byte)matchXList.size(), matchXList, 
+				(byte)insList.size(), insList, (short) 1);
+		
+		/*
+		 *  Create CCNx Content Table. 
+		 */
+		fieldList = new ArrayList<OFMatch20>();
+		fieldList.add(fieldMap.get("name"));
+		nextTableId = pofManager.iAddFlowTable(switchId, "CCNx Content Flow Table", OFTableType.OF_LPM_TABLE.getValue(),
+				(short)CCNX_MAX_NAME_SIZE, TABLE_SIZE, (byte)fieldList.size(), fieldList);
+		if (nextTableId == -1){
+			logger.error("Failed to create CCNx Content Flow Table!");
+			System.exit(1);
+		}
+		ccnx_content_table = pofManager.iGetFlowTable(switchId, nextTableId);
+		// add flow entry in CCNx First Flow Table for Contents
+		insList = new ArrayList<OFInstruction>();
+		ins = new OFInstructionGotoTable();
+		((OFInstructionGotoTable)ins).setNextTableId(nextTableId);
+		((OFInstructionGotoTable)ins).setPacketOffset((short)(2+17)); // type + Signature
+		insList.add(ins);
+		matchXList = new ArrayList<OFMatchX>();
+		m = fieldMap.get("type");
+		value = DatatypeConverter.parseHexBinary("0482");
+		mask = DatatypeConverter.parseHexBinary("ffff");
+		matchX = new OFMatchX(m, value, mask);
+		matchXList.add(matchX);
+		pofManager.iAddFlowEntry(switchId, globalTableId, (byte)matchXList.size(), matchXList, 
+				(byte)insList.size(), insList, (short) 1);
 		
 		/*
 		 *  Create First Flow table. 
 		 *  This will handle Ethernet packets and forward to our CCNx table
 		 */
-
 		fieldList = new ArrayList<OFMatch20>();
-		// create protocol
-		fieldId = pofManager.iNewField("Dmac", (short)48, (short)0);
-		fieldList.add(pofManager.iGetMatchField(fieldId));
-		fieldId = pofManager.iNewField("Smac", (short)48, (short)48);
-		fieldList.add(pofManager.iGetMatchField(fieldId));
-		fieldId = pofManager.iNewField("Eth Type", (short)16, (short)96);
-		fieldList.add(pofManager.iGetMatchField(fieldId));
-		pofManager.iAddProtocol("Ethernet sem VLAN", fieldList);
-		
-		// configure flow table
+		fieldList.add(fieldMap.get("Dmac"));
+		fieldList.add(fieldMap.get("Smac"));
+		fieldList.add(fieldMap.get("Eth Type"));
 		nextTableId = globalTableId;
 		globalTableId = pofManager.iAddFlowTable(switchId, IPMService.FIRST_ENTRY_TABLE_NAME,
 				OFTableType.OF_MM_TABLE.getValue(), (short)112, TABLE_SIZE, (byte)fieldList.size(),
@@ -120,18 +207,17 @@ public class POFCCNxListener implements IOFSwitchListener {
 			System.exit(1);
 		}
 		// add flow mod for ARP
-		// create matches. Will match everything
-		matchXList = new ArrayList<OFMatchX>();
-		for (OFMatch20 m : fieldList) {
-			value = new byte[m.getLength()/8];
-			mask = new byte[m.getLength()/8];
-			if (m.getFieldName().equals("Eth Type")){
-				value = DatatypeConverter.parseHexBinary("0806");
-				mask = DatatypeConverter.parseHexBinary("ffff");
-			}
-			matchX = new OFMatchX(m, value, mask);
-			matchXList.add(matchX);
-		}
+        matchXList = new ArrayList<OFMatchX>();
+        for (OFMatch20 mm : fieldList) {
+                value = new byte[mm.getLength()/8];
+                mask = new byte[mm.getLength()/8];
+                if (mm.getFieldName().equals("Eth Type")){
+                        value = DatatypeConverter.parseHexBinary("0806");
+                        mask = DatatypeConverter.parseHexBinary("ffff");
+                }
+                matchX = new OFMatchX(mm, value, mask);
+                matchXList.add(matchX);
+        }
 		insList = new ArrayList<OFInstruction>();
 		ins = new OFInstructionApplyActions();
 		ArrayList<OFAction> actionList = new ArrayList<OFAction>();
@@ -148,39 +234,16 @@ public class POFCCNxListener implements IOFSwitchListener {
 		// add flow mod for CCNx
 		// create matches. Will match everything
 		matchXList = new ArrayList<OFMatchX>();
-		for (OFMatch20 m : fieldList) {
-			value = new byte[m.getLength()/8];
-			mask = new byte[m.getLength()/8];
-			matchX = new OFMatchX(m, value, mask);
+		for (OFMatch20 mm : fieldList) {
+			value = new byte[mm.getLength()/8];
+			mask = new byte[mm.getLength()/8];
+			matchX = new OFMatchX(mm, value, mask);
 			matchXList.add(matchX);
 		}
 		insList = new ArrayList<OFInstruction>();
-		// ========== TESTE - muda mac para outra coisa qualquer
-		/*ins = new OFInstructionApplyActions();
-		ArrayList<OFAction> actionList = new ArrayList<OFAction>();
-		OFActionSetField action = new OFActionSetField();
-		OFMatch20 match20 = pofManager.iGetMatchField((short)3); // Dmac
-		value = DatatypeConverter.parseHexBinary("001fbbbbbbbb");
-		mask = DatatypeConverter.parseHexBinary("ffffffffffff");
-		matchX = new OFMatchX(match20, value, mask);
-		((OFActionSetField) action).setFieldSetting(matchX);
-		actionList.add(action);
-		action = new OFActionSetField();
-		match20 = pofManager.iGetMatchField((short)4); // Smac
-		value = DatatypeConverter.parseHexBinary("aaaaaaaaaaaa");
-		mask = DatatypeConverter.parseHexBinary("ffffffffffff");
-		matchX = new OFMatchX(match20, value, mask);
-		((OFActionSetField) action).setFieldSetting(matchX);
-		actionList.add(action);
-		((OFInstructionApplyActions) ins).setActionList(actionList);
-		((OFInstructionApplyActions) ins).setActionNum((byte)actionList.size());
-		insList.add(ins);*/
-		// ========================
 		ins = new OFInstructionGotoTable();
-		((OFInstructionGotoTable)ins).setNextTableId(nextTableId);
-		// set packet offset Ethernet + IP + UDP
-		//((OFInstructionGotoTable)ins).setPacketOffset((short) 14);
-		((OFInstructionGotoTable)ins).setPacketOffset((short) (14 + 20 + 8));
+		((OFInstructionGotoTable)ins).setNextTableId(firstCCnxTableId);
+		((OFInstructionGotoTable)ins).setPacketOffset((short) (14 + 20 + 8)); // Eth + IP + UDP
 		insList.add(ins);
 		pofManager.iAddFlowEntry(switchId, globalTableId, (byte)matchXList.size(), matchXList, 
 				(byte)insList.size(), insList, (short) 1);
