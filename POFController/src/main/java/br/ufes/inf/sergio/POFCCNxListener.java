@@ -9,6 +9,8 @@ import java.util.Map;
 
 import javax.xml.bind.DatatypeConverter;
 
+import org.ccnx.ccn.protocol.ContentName;
+import org.ccnx.ccn.protocol.MalformedContentNameStringException;
 import org.openflow.protocol.OFMatch20;
 import org.openflow.protocol.OFMatchX;
 import org.openflow.protocol.OFPort;
@@ -63,6 +65,11 @@ public class POFCCNxListener implements IOFSwitchListener {
 		List<Integer> portIdList = pofManager.iGetAllPortId(switchId);
 		for (int portId : portIdList){
         	OFPortStatus portStatus = pofManager.iGetPortStatus(switchId, portId);
+        	//if (portStatus.getDesc().getName().matches("^veth\\d+$")){
+        	if (portStatus.getDesc().getName().matches("^veth0$")){
+        		pofManager.iSetPortOpenFlowEnable(switchId, portId, (byte)1);
+        		continue;
+            }
             if (portStatus.getDesc().getName().matches("^s\\d+-eth\\d+$")){
         		pofManager.iSetPortOpenFlowEnable(switchId, portId, (byte)1);
             }
@@ -242,6 +249,23 @@ public class POFCCNxListener implements IOFSwitchListener {
 		insList.add(ins);
 		pofManager.iAddFlowEntry(switchId, globalTableId, (byte)matchXList.size(), matchXList, 
 				(byte)insList.size(), insList, (short) 1);
+		
+		// teste cache
+		try {
+			Thread.sleep(5000);
+		} catch (InterruptedException e1) {
+			// TODO Auto-generated catch block
+			e1.printStackTrace();
+		}
+		int t = 0;
+		try {
+			t = pofManager.iAddCacheEntry(switchId, ContentName.fromURI("ccnx:/tes"), (short) 1);
+			logger.debug("t = " + t);
+			
+		} catch (MalformedContentNameStringException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
 	}
 	
 	@Override

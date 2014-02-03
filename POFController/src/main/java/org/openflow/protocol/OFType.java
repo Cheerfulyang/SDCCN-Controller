@@ -300,7 +300,13 @@ public enum OFType {
                             @Override
                             public OFMessage instantiate() {
                                 return new OFCounterReply();
-                            }});
+                            }}),
+    CACHE_MOD      		(34, OFCacheMod.class, new Instantiable<OFMessage>() {
+                                @Override
+                                public OFMessage instantiate() {
+                                    return new OFCacheMod();
+                                }});
+    
 
     static OFType[] mapping;
 

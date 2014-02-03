@@ -52,9 +52,11 @@ import net.floodlightcontroller.core.module.IFloodlightModule;
 import net.floodlightcontroller.core.module.IFloodlightService;
 import net.floodlightcontroller.threadpool.IThreadPoolService;
 
+import org.ccnx.ccn.protocol.ContentName;
 import org.jboss.netty.channel.Channel;
 import org.openflow.protocol.OFCounter;
 import org.openflow.protocol.OFCounter.OFCounterModCmd;
+import org.openflow.protocol.OFCacheMod;
 import org.openflow.protocol.OFCounterMod;
 import org.openflow.protocol.OFCounterReply;
 import org.openflow.protocol.OFCounterRequest;
@@ -278,6 +280,7 @@ public class PofManager implements IFloodlightModule, IPMService {
     
     private void writeOf(int switchDeviceId, List<OFMessage> of_msg_buffer) {
     	Channel channel = ofChannels.get(switchDeviceId);
+    	log.debug("AEE");
     	if(null != channel){
     		channel.write(of_msg_buffer);
     	}
@@ -1234,6 +1237,86 @@ public class PofManager implements IFloodlightModule, IPMService {
         
         return flowMod;
     }
+    
+    @Override
+    public int iAddCacheEntry(int switchId, ContentName name, short priority){
+    	return addCacheEntry(switchId, name, priority, true);
+    }
+    
+    private int addCacheEntry(int switchId, ContentName name, short priority,
+                            boolean writeToSwitch){
+        //int cacheEntryId;
+        try {
+        	if(null == database){
+        		return CACHEENTRYID_INVALID;
+        	}
+    	
+        	//check the parameters
+        	if(false == switches.containsKey(switchId)){
+            	return CACHEENTRYID_INVALID;
+        	}
+        	
+        	if(null == name){
+        			return CACHEENTRYID_INVALID;
+        	}
+        	
+        	//add flow entry
+            //cacheEntryId = database.iAddFlowEntry(switchId, matchX, priority);
+            //if(CACHEENTRYID_INVALID == cacheEntryId){
+            //	return cacheEntryId;
+            //}
+            
+            if(true == writeToSwitch){
+                //OFFlowMod flowMod = database.iGetCacheEntry(switchId);
+                //if(flowMod == null){
+                //	return CACHEENTRYID_INVALID;
+                //}
+                //flowMod = flowMod.clone();
+                //flowMod.setCommand((byte)OFFlowEntryCmd.OFPFC_ADD.ordinal());
+            	OFCacheMod newCacheEntry = new OFCacheMod();
+            	log.debug("" + newCacheEntry.getLength()+" "+newCacheEntry.getLengthU());
+            	//newCacheEntry.setIndex(flowEntryId);
+            	newCacheEntry.setName(name);
+            	newCacheEntry.setPriority(priority);
+    	        //int newCounterID = switchDB.allocCounterId();
+    	        //newFlowEntry.setCounterId(newCounterID);
+            	//newCacheEntry.setLengthU(OFFlowMod.MAXIMAL_LENGTH);
+            	log.debug("" + newCacheEntry.getLength()+" "+newCacheEntry.getLengthU());
+                writeOf(switchId, newCacheEntry);
+                
+                //for roll back
+                this.iAddSendedOFMessage(switchId, newCacheEntry);
+            }
+            log.debug("TESTE3");
+            
+            //String keyString = calcMatchKey(matchXList);
+            //    database.putMatchKey(switchId, globalTableId, keyString, flowEntryId);
+        	//}
+        } catch (Exception e) {
+            e.printStackTrace();
+            //flowEntryId = CACHEENTRYID_INVALID;
+            return CACHEENTRYID_INVALID;
+        }
+        
+        //return flowEntryId;
+        return 1;
+    }
+
+    /*@Override
+    public List<OFCacheMod> iGetAllCacheEntry(int switchId){
+    	
+    }
+
+    @Override
+    public OFCacheMod iGetCacheEntry(int switchId, int flowEntryId);
+
+    @Override
+    public boolean iModCacheEntry(int switchId, int flowEntryId,
+    			OFMatchX matchX, short priority);
+
+    @Override
+    public void iDelCacheEntry(int switchId, int index);
+    */
     
     /**
      * Will be deleted below @Deprecated methods.

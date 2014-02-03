@@ -30,7 +30,9 @@ import java.util.Queue;
 import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.module.IFloodlightService;
 
+import org.ccnx.ccn.protocol.ContentName;
 import org.jboss.netty.channel.Channel;
+import org.openflow.protocol.OFCacheMod;
 import org.openflow.protocol.OFCounter;
 import org.openflow.protocol.OFCounterReply;
 import org.openflow.protocol.OFError;
@@ -93,6 +95,12 @@ public interface IPMService extends IFloodlightService{
     
     public static final int FLOWENTRYID_START = 0;
     public static final byte FLOWTABLEID_START = 0;
+    
+    public static final int CACHEENTRYID_INVALID = -1;
+    public static final byte CACHETABLEID_INVALID = -1;
+    
+    public static final int CACHEENTRYID_START = 0;
+    public static final byte CACHETABLEID_START = 0;
     
     public static final int COUNTERID_INVALID = 0;
     public static final int GROUPID_INVALID = 0;
@@ -310,6 +318,21 @@ public interface IPMService extends IFloodlightService{
                                 short priority);
     
     public void iDelFlowEntry(int switchId, byte globalTableId, int index);
+    
+    //cache entry
+    /**
+     * @return new cache entry ID. -1 means failed.
+     */
+    public int iAddCacheEntry(int switchId, ContentName name, short priority);
+    
+    /*public List<OFCacheMod> iGetAllCacheEntry(int switchId);
+    
+    public OFCacheMod iGetCacheEntry(int switchId, int flowEntryId);
+    
+    public boolean iModCacheEntry(int switchId, int flowEntryId,
+                                OFMatchX matchX, short priority);
+    
+    public void iDelCacheEntry(int switchId, int index);
     
     /**
      * Will be deleted below @Deprecated methods.
