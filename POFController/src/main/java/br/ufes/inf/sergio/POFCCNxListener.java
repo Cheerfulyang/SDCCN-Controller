@@ -259,7 +259,7 @@ public class POFCCNxListener implements IOFSwitchListener {
 		}
 		int t = 0;
 		try {
-			t = pofManager.iAddCacheEntry(switchId, ContentName.fromURI("ccnx:/tes"), (short) 1);
+			t = pofManager.iAddCacheEntry(switchId, ContentName.fromURI("ccnx:/test"), (short) 1);
 			logger.debug("t = " + t);
 			
 		} catch (MalformedContentNameStringException e) {
