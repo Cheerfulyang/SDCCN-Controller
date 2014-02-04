@@ -249,23 +249,6 @@ public class POFCCNxListener implements IOFSwitchListener {
 		insList.add(ins);
 		pofManager.iAddFlowEntry(switchId, globalTableId, (byte)matchXList.size(), matchXList, 
 				(byte)insList.size(), insList, (short) 1);
-		
-		// teste cache
-		try {
-			Thread.sleep(5000);
-		} catch (InterruptedException e1) {
-			// TODO Auto-generated catch block
-			e1.printStackTrace();
-		}
-		int t = 0;
-		try {
-			t = pofManager.iAddCacheEntry(switchId, ContentName.fromURI("ccnx:/test"), (short) 1);
-			logger.debug("t = " + t);
-			
-		} catch (MalformedContentNameStringException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
 	}
 	
 	@Override

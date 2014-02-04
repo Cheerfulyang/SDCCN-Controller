@@ -14,6 +14,7 @@ public class POFCCNxWebRoutable implements RestletRoutable {
 		Router router = new Router(context);
         //router.attach("/addName/{name}/json", POFCCNxResource.class);
 		router.attach("/addName/", POFCCNxResource.class).setMatchingMode(Template.MODE_STARTS_WITH);
+		router.attach("/addCache/", POFCCNxResource.class).setMatchingMode(Template.MODE_STARTS_WITH);
         return router;
 	}
 

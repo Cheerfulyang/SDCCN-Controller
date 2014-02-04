@@ -1287,7 +1287,6 @@ public class PofManager implements IFloodlightModule, IPMService {
                 //for roll back
                 this.iAddSendedOFMessage(switchId, newCacheEntry);
             }
-            log.debug("TESTE3");
             
             //String keyString = calcMatchKey(matchXList);
             //    database.putMatchKey(switchId, globalTableId, keyString, flowEntryId);
@@ -1299,7 +1298,7 @@ public class PofManager implements IFloodlightModule, IPMService {
         }
         
         //return flowEntryId;
-        return 1;
+        return 0;
     }
 
     /*@Override

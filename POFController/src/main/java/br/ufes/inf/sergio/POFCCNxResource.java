@@ -8,7 +8,12 @@ public class POFCCNxResource extends ServerResource {
     public int retrieve() {
         IPOFCCNxService pihr = (IPOFCCNxService)getContext().getAttributes().get(IPOFCCNxService.class.getCanonicalName());
         String name = getOriginalRef().toString().replaceFirst(getRequest().getRootRef().toString(), "");
-        name = name.replaceFirst("/ccnx/addName/", "");
-        return pihr.addName(name);
+        if (name.contains("addName")){
+        	name = name.replaceFirst("/ccnx/addName/", "");
+        	return pihr.addName(name);
+        }else{
+        	name = name.replaceFirst("/ccnx/addCache/", "");
+        	return pihr.addCache(name);
+        }
     }
 }

@@ -166,4 +166,16 @@ public class POFCCNx implements IOFMessageListener, IFloodlightModule, IPOFCCNxS
 		// TODO Auto-generated method stub
 		return null;
 	}
+
+	@Override
+	public int addCache(String name) {
+		int t = 0;
+		int switchId = pofManager.iGetAllSwitchID().get(0); // FIXME descobrir switch mais proximo
+		try {
+			return pofManager.iAddCacheEntry(switchId, ContentName.fromURI("ccnx:/"+name), (short) 1);
+		} catch (MalformedContentNameStringException e) {
+			e.printStackTrace();
+		}
+		return 1;
+	}
 }
