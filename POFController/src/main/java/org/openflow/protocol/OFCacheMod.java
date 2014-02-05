@@ -21,14 +21,13 @@ public class OFCacheMod extends OFMessage implements Cloneable {
     public static final int MAXIMAL_LENGTH = OFCacheMod.MINIMUM_LENGTH;
     
     public enum OFFlowEntryCmd {
-        OFPCC_ADD,                  /* New Cache. */
-        OFPCC_MODIFY,               /* Modify all matching caches. */
-        OFPCC_MODIFY_STRICT,        /* Modify entry strictly matching wildcards */
-        OFPCC_DELETE,               /* Delete all matching caches. */
-        OFPCC_DELETE_STRICT         /* Strictly match wildcards and priority. */
+        OFPCAC_ADD,                  /* New Cache. */
+        OFPCAC_MODIFY,               /* Modify matching cache. */
+        OFPCAC_DELETE,               /* Delete matching cache. */
     }
 
     protected byte command;
+    protected byte strict;   
     protected short idleTimeout;
     protected short hardTimeout;
     protected short priority;
@@ -62,6 +61,14 @@ public class OFCacheMod extends OFMessage implements Cloneable {
     public OFCacheMod setCommand(byte command) {
         this.command = command;
         return this;
+    }
+    
+    public byte getStrict() {
+    	return this.strict;
+    }
+    
+    public void setStrict(byte strict) {
+    	this.strict = strict;
     }
 
     /**
@@ -136,7 +143,7 @@ public class OFCacheMod extends OFMessage implements Cloneable {
         super.readFrom(data);
         
         this.command = data.readByte();
-        data.readByte();       
+        this.strict = data.readByte();       
         this.idleTimeout = data.readShort();
         this.hardTimeout = data.readShort();
         this.priority = data.readShort();
@@ -163,7 +170,7 @@ public class OFCacheMod extends OFMessage implements Cloneable {
         super.writeTo(data);
         
         data.writeByte(this.command);
-        data.writeZero(1);
+        data.writeByte(this.strict);
         data.writeShort(idleTimeout);
         data.writeShort(hardTimeout);
         data.writeShort(priority);
@@ -183,7 +190,7 @@ public class OFCacheMod extends OFMessage implements Cloneable {
         String string = super.toBytesString();
         
         string += HexString.toHex(command);
-        string += HexString.ByteZeroEnd(1);
+        string += HexString.toHex(strict);
         string += HexString.toHex(idleTimeout);
         string += " ";
         
@@ -205,6 +212,7 @@ public class OFCacheMod extends OFMessage implements Cloneable {
         String string = super.toString();
         string += "; FlowEntry:" +
                     "cmd=" + command +
+                    ";st=" + strict +
                     ";it=" + idleTimeout +
                     ";ht=" + hardTimeout +
                     ";p=" + priority +
@@ -220,6 +228,7 @@ public class OFCacheMod extends OFMessage implements Cloneable {
         final int prime = 31;
         int result = super.hashCode();
         result = prime * result + command;
+        result = prime * result + strict;
         result = prime * result + hardTimeout;
         result = prime * result + idleTimeout;
         result = prime * result + index;
@@ -239,6 +248,8 @@ public class OFCacheMod extends OFMessage implements Cloneable {
         OFCacheMod other = (OFCacheMod) obj;
         if (command != other.command)
             return false;
+        if (strict != other.strict)
+        	return false;
         if (hardTimeout != other.hardTimeout)
             return false;
         if (idleTimeout != other.idleTimeout)
