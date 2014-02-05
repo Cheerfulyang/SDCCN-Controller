@@ -28,23 +28,11 @@ public class OFCacheMod extends OFMessage implements Cloneable {
         OFPCC_DELETE_STRICT         /* Strictly match wildcards and priority. */
     }
 
-    // Open Flow Flow Mod Flags. Use "or" operation to set multiple flags
-    //public static final short OFPFF_SEND_FLOW_REM = 0x1; // 1 << 0
-    //public static final short OFPFF_CHECK_OVERLAP = 0x2; // 1 << 1
-    //public static final short OFPFF_EMERG         = 0x4; // 1 << 2
-
     protected byte command;
-    //protected int counterId;   
-    
-    //protected long cookie;
-    //protected long cookieMask;
-    
     protected short idleTimeout;
     protected short hardTimeout;
     protected short priority;
-    
     protected int index;
-    
     protected ContentName name;
     
     public OFCacheMod() {
@@ -58,23 +46,6 @@ public class OFCacheMod extends OFMessage implements Cloneable {
     public int getLengthU() {
         return MAXIMAL_LENGTH;
     }
-
-    /**
-     * Get cookie
-     * @return cookie
-     */
-    //public long getCookie() {
-    ////    return this.cookie;
-    //}
-
-    /**
-     * Set cookie
-     * @param cookie
-     */
-    //public OFCacheMod setCookie(long cookie) {
-    //    this.cookie = cookie;
-    //    return this;
-    //}
 
     /**
      * Get command
@@ -143,23 +114,6 @@ public class OFCacheMod extends OFMessage implements Cloneable {
         this.priority = priority;
         return this;
     }
-    
-    
-    /*public int getCounterId() {
-        return counterId;
-    }
-
-    public void setCounterId(int counterId) {
-        this.counterId = counterId;
-    }
-
-    public long getCookieMask() {
-        return cookieMask;
-    }
-
-    public void setCookieMask(long cookieMask) {
-        this.cookieMask = cookieMask;
-    }*/
 
     public int getIndex() {
         return index;
@@ -182,12 +136,7 @@ public class OFCacheMod extends OFMessage implements Cloneable {
         super.readFrom(data);
         
         this.command = data.readByte();
-        data.readByte();
-        //this.counterId = data.readInt();
-        
-        //this.cookie = data.readLong();
-        //this.cookieMask = data.readLong();
-        
+        data.readByte();       
         this.idleTimeout = data.readShort();
         this.hardTimeout = data.readShort();
         this.priority = data.readShort();
@@ -215,11 +164,6 @@ public class OFCacheMod extends OFMessage implements Cloneable {
         
         data.writeByte(this.command);
         data.writeZero(1);
-        //data.writeInt(this.counterId);
-        
-        //data.writeLong(this.cookie);
-        //data.writeLong(this.cookieMask);
-        
         data.writeShort(idleTimeout);
         data.writeShort(hardTimeout);
         data.writeShort(priority);
@@ -240,13 +184,6 @@ public class OFCacheMod extends OFMessage implements Cloneable {
         
         string += HexString.toHex(command);
         string += HexString.ByteZeroEnd(1);
-        
-        //string += HexString.toHex(counterId);
-        
-        //string += HexString.toHex(cookie);
-        
-        //string += HexString.toHex(cookieMask);
-
         string += HexString.toHex(idleTimeout);
         string += " ";
         
@@ -255,8 +192,8 @@ public class OFCacheMod extends OFMessage implements Cloneable {
         string += " ";
         
         string += HexString.toHex(index);
-        
         string += HexString.ByteZeroEnd(4);
+        string += " ";
         
         string += name.toString();
         
@@ -268,9 +205,6 @@ public class OFCacheMod extends OFMessage implements Cloneable {
         String string = super.toString();
         string += "; FlowEntry:" +
                     "cmd=" + command +
-                    //";cid=" + counterId +
-                   // ";ck=" + cookie +
-                    //";ckm=" + cookieMask +
                     ";it=" + idleTimeout +
                     ";ht=" + hardTimeout +
                     ";p=" + priority +
@@ -286,9 +220,6 @@ public class OFCacheMod extends OFMessage implements Cloneable {
         final int prime = 31;
         int result = super.hashCode();
         result = prime * result + command;
-        //result = prime * result + (int) (cookie ^ (cookie >>> 32));
-        //result = prime * result + (int) (cookieMask ^ (cookieMask >>> 32));
-        //result = prime * result + counterId;
         result = prime * result + hardTimeout;
         result = prime * result + idleTimeout;
         result = prime * result + index;
@@ -308,12 +239,6 @@ public class OFCacheMod extends OFMessage implements Cloneable {
         OFCacheMod other = (OFCacheMod) obj;
         if (command != other.command)
             return false;
-        //if (cookie != other.cookie)
-        //    return false;
-        //if (cookieMask != other.cookieMask)
-        //    return false;
-        //if (counterId != other.counterId)
-        //    return false;
         if (hardTimeout != other.hardTimeout)
             return false;
         if (idleTimeout != other.idleTimeout)
