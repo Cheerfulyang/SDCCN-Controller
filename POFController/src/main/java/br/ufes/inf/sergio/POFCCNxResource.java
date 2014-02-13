@@ -12,7 +12,7 @@ public class POFCCNxResource extends ServerResource {
         	name = name.replaceFirst("/ccnx/addName/", "");
         	return pihr.addName(name);
         }else if (name.contains("delCache")){
-        	return pihr.delCache((Integer)getRequest().getAttributes().get("id"));
+        	return pihr.delCache(Integer.parseInt((String) getRequest().getAttributes().get("id")));
         }else if (name.contains("addStrictCache")){
         	name = name.replaceFirst("/ccnx/addStrictCache/", "");
         	return pihr.addCache(name, (byte)1);

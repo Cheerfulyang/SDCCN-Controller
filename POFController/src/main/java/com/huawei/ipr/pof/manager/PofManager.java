@@ -1453,7 +1453,7 @@ public class PofManager implements IFloodlightModule, IPMService {
             database.iDelCacheEntry(switchId, index);
             
             if(true == writeToSwitch){
-            	cacheMod.setCommand((byte)OFFlowEntryCmd.OFPFC_DELETE.ordinal());
+            	cacheMod.setCommand((byte)OFCacheEntryCmd.OFPCAC_DELETE.ordinal());
             	
                 writeOf(switchId, cacheMod);
                 
