@@ -20,7 +20,7 @@ public class OFCacheMod extends OFMessage implements Cloneable {
     public static final int MINIMUM_LENGTH = OFMessage.MINIMUM_LENGTH + 40;  //48
     public static final int MAXIMAL_LENGTH = OFCacheMod.MINIMUM_LENGTH;
     
-    public enum OFFlowEntryCmd {
+    public enum OFCacheEntryCmd {
         OFPCAC_ADD,                  /* New Cache. */
         OFPCAC_MODIFY,               /* Modify matching cache. */
         OFPCAC_DELETE,               /* Delete matching cache. */

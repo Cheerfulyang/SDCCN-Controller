@@ -54,6 +54,7 @@ import net.floodlightcontroller.threadpool.IThreadPoolService;
 
 import org.ccnx.ccn.protocol.ContentName;
 import org.jboss.netty.channel.Channel;
+import org.openflow.protocol.OFCacheMod.OFCacheEntryCmd;
 import org.openflow.protocol.OFCounter;
 import org.openflow.protocol.OFCounter.OFCounterModCmd;
 import org.openflow.protocol.OFCacheMod;
@@ -1239,13 +1240,14 @@ public class PofManager implements IFloodlightModule, IPMService {
     }
     
     @Override
-    public int iAddCacheEntry(int switchId, ContentName name, short priority){
-    	return addCacheEntry(switchId, name, priority, true);
+    public int iAddCacheEntry(int switchId, ContentName name, byte strict,   
+			short idleTimeout, short hardTimeout, short priority){
+    	return addCacheEntry(switchId, name, strict, idleTimeout, hardTimeout, priority, true);
     }
     
-    private int addCacheEntry(int switchId, ContentName name, short priority,
-                            boolean writeToSwitch){
-        //int cacheEntryId;
+    private int addCacheEntry(int switchId, ContentName name, byte strict,   
+			short idleTimeout, short hardTimeout, short priority, boolean writeToSwitch){
+        int cacheEntryId;
         try {
         	if(null == database){
         		return CACHEENTRYID_INVALID;
@@ -1260,62 +1262,213 @@ public class PofManager implements IFloodlightModule, IPMService {
         			return CACHEENTRYID_INVALID;
         	}
         	
-        	//add flow entry
-            //cacheEntryId = database.iAddFlowEntry(switchId, matchX, priority);
-            //if(CACHEENTRYID_INVALID == cacheEntryId){
-            //	return cacheEntryId;
-            //}
-            
-            if(true == writeToSwitch){
-                //OFFlowMod flowMod = database.iGetCacheEntry(switchId);
-                //if(flowMod == null){
-                //	return CACHEENTRYID_INVALID;
-                //}
-                //flowMod = flowMod.clone();
-                //flowMod.setCommand((byte)OFFlowEntryCmd.OFPFC_ADD.ordinal());
-            	OFCacheMod newCacheEntry = new OFCacheMod();
-            	log.debug("" + newCacheEntry.getLength()+" "+newCacheEntry.getLengthU());
-            	//newCacheEntry.setIndex(flowEntryId);
-            	newCacheEntry.setName(name);
-            	newCacheEntry.setPriority(priority);
-    	        //int newCounterID = switchDB.allocCounterId();
-    	        //newFlowEntry.setCounterId(newCounterID);
-            	//newCacheEntry.setLengthU(OFFlowMod.MAXIMAL_LENGTH);
-            	log.debug("" + newCacheEntry.getLength()+" "+newCacheEntry.getLengthU());
-                writeOf(switchId, newCacheEntry);
-                
-                //for roll back
-                this.iAddSendedOFMessage(switchId, newCacheEntry);
+        	//add cache entry
+            cacheEntryId = database.iAddCacheEntry(switchId, name, strict, idleTimeout, hardTimeout, priority);
+            if(CACHEENTRYID_INVALID == cacheEntryId){
+            	return cacheEntryId;
             }
             
-            //String keyString = calcMatchKey(matchXList);
-            //    database.putMatchKey(switchId, globalTableId, keyString, flowEntryId);
-        	//}
+            if(true == writeToSwitch){
+                OFCacheMod cacheMod = database.iGetCacheEntry(switchId, cacheEntryId);
+                if(cacheMod == null){
+                	return CACHEENTRYID_INVALID;
+                }
+                cacheMod = cacheMod.clone();
+                cacheMod.setCommand((byte)OFCacheEntryCmd.OFPCAC_ADD.ordinal());
+            	
+                writeOf(switchId, cacheMod);
+                
+                //for roll back
+                this.iAddSendedOFMessage(switchId, cacheMod);
+            }
         } catch (Exception e) {
             e.printStackTrace();
-            //flowEntryId = CACHEENTRYID_INVALID;
-            return CACHEENTRYID_INVALID;
+            cacheEntryId = CACHEENTRYID_INVALID;
         }
         
-        //return flowEntryId;
-        return 0;
+        return cacheEntryId;
     }
+    
+    public class CacheEntryGloablIDComparator implements Comparator<OFCacheMod> {
+		@Override
+		public int compare(OFCacheMod entry1, OFCacheMod entry2) {
+			if(entry1 == null || entry2 == null){
+				return 0;
+			}
+			
+			int id1 = entry1.getIndex();
+			int id2 = entry2.getIndex();
+			
+			return id1 - id2;
+		}
+	}
+	
+	private Comparator<OFCacheMod> cacheEntryIDComp = new CacheEntryGloablIDComparator();
 
-    /*@Override
+    @Override
     public List<OFCacheMod> iGetAllCacheEntry(int switchId){
+    	List<OFCacheMod> cacheEntryList = new ArrayList<OFCacheMod>();
     	
+    	try{
+	        if(null == database){
+	            return null;
+	        }
+	        
+	        Map<Integer, OFCacheMod> cacheEntryMap = database.iGetCacheEntriesMap(switchId);
+	        
+	        if(null != cacheEntryMap){
+		        Iterator<Integer> tableIdIter = cacheEntryMap.keySet().iterator();
+		        int cacheID;
+		        OFCacheMod cacheEntry;
+		        
+		        if(null != tableIdIter){
+			        while(tableIdIter.hasNext()){
+			            cacheID = tableIdIter.next();
+			            cacheEntry = cacheEntryMap.get(cacheID);
+			            cacheEntryList.add(cacheEntry);
+			        }
+			        
+			        Collections.sort(cacheEntryList, cacheEntryIDComp); 
+		        }
+	        }
+    	}catch(Exception e){
+    		e.printStackTrace();
+    	}
+        
+        return cacheEntryList;
     }
 
     @Override
-    public OFCacheMod iGetCacheEntry(int switchId, int flowEntryId);
-
+    public OFCacheMod iGetCacheEntry(int switchId, int cacheEntryId){
+    	if(null == database){
+            return null;
+        }
+        
+        return database.iGetCacheEntry(switchId, cacheEntryId);  
+    }
+    
+    protected boolean checkCacheEntryReduplication(int switchId, int cacheEntryID){
+		try{
+			if(null == database){
+	            return true;
+	        }
+			Map<Integer, OFCacheMod> cacheEntryMap = database.getSwitchDatabase(switchId).getCacheTableDatabase().getCacheEntriesMap();
+			String name = cacheEntryMap.get(cacheEntryID).getName().toString();
+			int i;
+			for (i = 0; i < cacheEntryMap.size(); i++){
+				if ((name.equals(cacheEntryMap.get(i).getName().toString())) && (cacheEntryID != i)){
+					return true;
+				}
+			}
+			
+			return false;
+			
+		}catch(Exception e){
+			e.printStackTrace();
+		}
+		
+		return true;
+	}
+    
     @Override
-    public boolean iModCacheEntry(int switchId, int flowEntryId,
-    			OFMatchX matchX, short priority);
+    public boolean iModCacheEntry(int switchId, int cacheEntryId, ContentName name,
+    		byte strict, short idleTimeout, short hardTimeout, short priority){
+    	return modCacheEntry(switchId, cacheEntryId, name, strict, idleTimeout, hardTimeout, priority, true);
+    }
 
-    @Override
-    public void iDelCacheEntry(int switchId, int index);
-    */
+    private boolean modCacheEntry(int switchId, int cacheEntryId, ContentName name,
+    		byte strict, short idleTimeout, short hardTimeout, short priority, boolean writeToSwitch){
+    	try {
+            if(null == database){
+                return false;
+            }
+            
+        	//check the parameters
+        	if(false == switches.containsKey(switchId)){
+            	return false;
+        	}
+        	
+        	OFCacheMod oldCacheMod = database.iGetCacheEntry(switchId, cacheEntryId);
+        	if(null == oldCacheMod){
+        		return false;
+        	}
+        	oldCacheMod = oldCacheMod.clone();
+        	
+        	if (oldCacheMod.getName() == null){
+        		return false;
+        	}
+        	
+            //check reduplication
+            if(true == checkCacheEntryReduplication(switchId, oldCacheMod.getIndex())){
+            	log.info("cache entry is reduplicate (check name).");
+            	return false;
+        	}
+        	
+        	//modify entry
+            database.iModCacheEntry(switchId, cacheEntryId, name, strict, idleTimeout, hardTimeout, priority);
+            
+            if(true == writeToSwitch){
+                OFCacheMod cacheMod = database.iGetCacheEntry(switchId, cacheEntryId);
+            	if(null == cacheMod){
+            		return false;
+            	}
+            	cacheMod = cacheMod.clone();
+            	cacheMod.setCommand((byte)OFCacheEntryCmd.OFPCAC_MODIFY.ordinal());
+                
+                writeOf(switchId, cacheMod); 
+                
+                //for roll back
+                this.iAddSendedOFMessage(switchId, cacheMod);            
+                this.addOldBackupOFMessage(switchId, cacheMod.getXid(), oldCacheMod);
+            }
+            
+            return true;
+            
+        } catch (Exception e) {
+            e.printStackTrace();
+            return false;
+        }
+    }
+    
+
+	@Override
+	public OFCacheMod iDelCacheEntry(int switchId, int index) {
+		return delCacheEntry(switchId, index, true);
+    }
+    
+    private OFCacheMod delCacheEntry(int switchId, int index, boolean writeToSwitch){ 
+        OFCacheMod cacheMod;
+        try {
+            if(null == database){
+                return null;
+            }
+            
+            cacheMod = database.iGetCacheEntry(switchId, index);
+            if(cacheMod == null){
+            	return null;
+            }
+            
+            cacheMod = cacheMod.clone();
+            
+            database.iDelCacheEntry(switchId, index);
+            
+            if(true == writeToSwitch){
+            	cacheMod.setCommand((byte)OFFlowEntryCmd.OFPFC_DELETE.ordinal());
+            	
+                writeOf(switchId, cacheMod);
+                
+                //for roll back
+                this.iAddSendedOFMessage(switchId, cacheMod);
+            }
+
+        }catch (Exception e) {
+            e.printStackTrace();
+            cacheMod = null;
+        }
+        
+        return cacheMod;
+    }
+
     
     /**
      * Will be deleted below @Deprecated methods.
@@ -2474,4 +2627,5 @@ public class PofManager implements IFloodlightModule, IPMService {
 	public void reloadUI(){
 		gui.reloadUI();
 	}
+
 }

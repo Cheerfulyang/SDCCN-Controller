@@ -33,6 +33,8 @@ import java.util.Queue;
 
 import net.floodlightcontroller.core.module.IFloodlightService;
 
+import org.ccnx.ccn.protocol.ContentName;
+import org.openflow.protocol.OFCacheMod;
 import org.openflow.protocol.OFCounter;
 import org.openflow.protocol.OFFeaturesReply;
 import org.openflow.protocol.OFFlowMod;
@@ -144,6 +146,22 @@ public interface IPMDatabaseService extends IFloodlightService {
     public OFFlowMod iDelFlowEntry(int switchId, byte globalTableId, int index);
     
     public Map<Integer, OFFlowMod> iGetFlowEntriesMap(int switchId, byte globalTableId);
+    
+    //cache
+    //public OFFlowTable iGetCacheTable(int switchId);
+    
+    public int iAddCacheEntry(int switchId, ContentName name, byte strict,   
+			short idleTimeout, short hardTimeout, short priority);
+
+    public OFCacheMod iGetCacheEntry(int switchId, int cacheEntryId);
+
+    public boolean iModCacheEntry(int switchId, int cacheEntryId,
+    		ContentName name, byte strict, short idleTimeout, short hardTimeout,
+    		short priority);
+    
+    public OFCacheMod iDelCacheEntry(int switchId, int index);
+    
+    public Map<Integer, OFCacheMod> iGetCacheEntriesMap(int switchId);
     
     //match key for check reduplication
     public void putMatchKey(int switchId, byte globalTableId, String keyString, int entryId);

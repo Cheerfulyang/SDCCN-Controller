@@ -43,6 +43,8 @@ import net.floodlightcontroller.core.module.FloodlightModuleException;
 import net.floodlightcontroller.core.module.IFloodlightModule;
 import net.floodlightcontroller.core.module.IFloodlightService;
 
+import org.ccnx.ccn.protocol.ContentName;
+import org.openflow.protocol.OFCacheMod;
 import org.openflow.protocol.OFCounter;
 import org.openflow.protocol.OFFeaturesReply;
 import org.openflow.protocol.OFFlowMod;
@@ -1323,4 +1325,96 @@ public class PMDatabase implements IFloodlightModule, IPMDatabaseService{
         fieldDatabase = new ConcurrentHashMap<Short, OFMatch20>();
         fieldIdNo = IPMService.FIELDID_START;        
     }
+
+	@Override
+	public int iAddCacheEntry(int switchId, ContentName name, byte strict,   
+			short idleTimeout, short hardTimeout, short priority) {
+		int cacheEntryId = IPMService.CACHEENTRYID_INVALID;
+    	try{
+	    	PMSwitchDatabase switchDB = this.getSwitchDatabase(switchId);
+	    	if(null == switchDB){
+	    		return IPMService.CACHEENTRYID_INVALID;
+	    	}
+	    	
+	        cacheEntryId = switchDB.getCacheTableDatabase()
+	                                .getNewCacheEntryID();
+	        
+	        OFCacheMod newCacheEntry = new OFCacheMod();
+	        newCacheEntry.setIndex(cacheEntryId);	        
+	        newCacheEntry.setName(name);
+	        newCacheEntry.setStrict(strict);
+	        newCacheEntry.setIdleTimeout(idleTimeout);
+	        newCacheEntry.setHardTimeout(hardTimeout);
+	        newCacheEntry.setPriority(priority);
+	        
+	        //newCacheEntry.setLengthU(OFFlowMod.MAXIMAL_LENGTH);
+	        
+	        switchDB.getCacheTableDatabase()
+	            	.putCacheEntry(cacheEntryId, newCacheEntry);
+    	}catch(Exception e){
+    		e.printStackTrace();
+    		cacheEntryId = IPMService.CACHEENTRYID_INVALID;
+    	}
+        
+        return cacheEntryId;
+	}
+
+	@Override
+	public OFCacheMod iGetCacheEntry(int switchId, int cacheEntryId) {
+		PMSwitchDatabase switchDB = this.getSwitchDatabase(switchId);
+    	if(null == switchDB){
+    		return null;
+    	}
+
+        return switchDB.getCacheTableDatabase().getCacheEntry(cacheEntryId);
+	}
+
+	@Override
+	public boolean iModCacheEntry(int switchId, int cacheEntryId,
+			ContentName name, byte strict, short idleTimeout, short hardTimeout,
+    		short priority) {
+		try{
+	        OFCacheMod cacheEntryFlowMod = this.getSwitchDatabase(switchId)
+	                                        .getCacheTableDatabase()
+	                                        .getCacheEntry(cacheEntryId);
+	        
+	        if(cacheEntryFlowMod == null){
+	        	return false;
+	        }
+	        
+	        cacheEntryFlowMod.setName(name);
+	        cacheEntryFlowMod.setStrict(strict);
+	        cacheEntryFlowMod.setIdleTimeout(idleTimeout);
+	        cacheEntryFlowMod.setHardTimeout(hardTimeout);
+	        cacheEntryFlowMod.setPriority(priority);
+	        
+	        return true;
+    	}catch(Exception e){
+    		e.printStackTrace();
+    		return false;
+    	}
+	}
+
+	@Override
+	public OFCacheMod iDelCacheEntry(int switchId, int index) {
+		try{
+	        OFCacheMod cacheEntry =  getSwitchDatabase(switchId)
+	                                    .getCacheTableDatabase()
+	                                    .deleteCacheEntry(index);
+	        return cacheEntry;
+    	}catch(Exception e){
+    		e.printStackTrace();
+    		return null;
+    	}
+	}
+
+	@Override
+	public Map<Integer, OFCacheMod> iGetCacheEntriesMap(int switchId) {
+		PMSwitchDatabase switchDB = this.getSwitchDatabase(switchId);
+    	if(null == switchDB){
+    		return null;
+    	}
+
+        return switchDB.getCacheTableDatabase().getCacheEntriesMap();
+	}
 }

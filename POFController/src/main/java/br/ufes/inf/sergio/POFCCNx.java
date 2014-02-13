@@ -3,17 +3,16 @@ package br.ufes.inf.sergio;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.MalformedContentNameStringException;
+import org.openflow.protocol.OFCacheMod;
 import org.openflow.protocol.OFMatch20;
 import org.openflow.protocol.OFMatchX;
 import org.openflow.protocol.OFMessage;
 import org.openflow.protocol.OFPort;
-import org.openflow.protocol.OFPortStatus;
 import org.openflow.protocol.OFType;
 import org.openflow.protocol.action.OFAction;
 import org.openflow.protocol.action.OFActionOutput;
@@ -168,14 +167,24 @@ public class POFCCNx implements IOFMessageListener, IFloodlightModule, IPOFCCNxS
 	}
 
 	@Override
-	public int addCache(String name) {
-		int t = 0;
+	public int addCache(String name, byte strict) {
 		int switchId = pofManager.iGetAllSwitchID().get(0); // FIXME descobrir switch mais proximo
 		try {
-			return pofManager.iAddCacheEntry(switchId, ContentName.fromURI("ccnx:/"+name), (short) 1);
+			return pofManager.iAddCacheEntry(switchId, ContentName.fromURI("ccnx:/"+name), strict,
+					(short)0, (short)0, (short) 1);
 		} catch (MalformedContentNameStringException e) {
 			e.printStackTrace();
 		}
-		return 1;
+		return -1;
+	}
+
+	@Override
+	public int delCache(int id){
+		int switchId = pofManager.iGetAllSwitchID().get(0); // FIXME descobrir switch mais proximo
+		OFCacheMod cache = pofManager.iDelCacheEntry(switchId, id);
+		if (cache == null){
+			return -1;
+		}
+		return cache.getIndex();
 	}
 }

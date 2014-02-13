@@ -323,16 +323,17 @@ public interface IPMService extends IFloodlightService{
     /**
      * @return new cache entry ID. -1 means failed.
      */
-    public int iAddCacheEntry(int switchId, ContentName name, short priority);
+    public int iAddCacheEntry(int switchId, ContentName name, byte strict,   
+    						short idleTimeout, short hardTimeout, short priority);
     
-    /*public List<OFCacheMod> iGetAllCacheEntry(int switchId);
+    public List<OFCacheMod> iGetAllCacheEntry(int switchId);
     
-    public OFCacheMod iGetCacheEntry(int switchId, int flowEntryId);
+    public OFCacheMod iGetCacheEntry(int switchId, int cacheEntryId);
     
-    public boolean iModCacheEntry(int switchId, int flowEntryId,
-                                OFMatchX matchX, short priority);
+    public boolean iModCacheEntry(int switchId, int cacheEntryId, ContentName name,
+    		byte strict, short idleTimeout, short hardTimeout, short priority);
     
-    public void iDelCacheEntry(int switchId, int index);
+    public OFCacheMod iDelCacheEntry(int switchId, int index);
     
     /**
      * Will be deleted below @Deprecated methods.

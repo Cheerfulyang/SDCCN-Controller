@@ -104,6 +104,8 @@ public class PMSwitchDatabase {
     protected Queue<OFMessage> sendedOfmQueue;    
     protected Map<Integer, OFMessage> oldBackupOfmMap; //<sended_Ofm_xid, oldOFMessage>
     
+    protected PMCacheTableDatabase cacheTableDatabase;
+    
     public final static int QUEUE_LOG_SIZE_MAXIMAL = 100;
     
     public final static int QUEUE_SENDED_SIZE_MAXIMAL = 20;
@@ -132,6 +134,8 @@ public class PMSwitchDatabase {
         
         sendedOfmQueue = new LinkedBlockingQueue<OFMessage>(QUEUE_SENDED_SIZE_MAXIMAL);
         oldBackupOfmMap = new ConcurrentHashMap<Integer, OFMessage>();
+        
+        cacheTableDatabase = new PMCacheTableDatabase();
     }
     
     public void iAddSendedOFMessage(OFMessage message){
@@ -982,5 +986,9 @@ public class PMSwitchDatabase {
             return false;
         return true;
     }
+
+	public PMCacheTableDatabase getCacheTableDatabase() {
+		return cacheTableDatabase;
+	}
 
 }
