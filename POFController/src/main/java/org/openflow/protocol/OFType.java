@@ -305,8 +305,12 @@ public enum OFType {
                                 @Override
                                 public OFMessage instantiate() {
                                     return new OFCacheMod();
-                                }});
-    
+                                }}),
+    CACHE_FULL        	(35, OFCacheFull.class, new Instantiable<OFMessage>() {
+    							@Override
+    							public OFMessage instantiate() {
+    								return new OFCacheFull();
+    							}});
 
     static OFType[] mapping;
 

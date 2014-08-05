@@ -8,6 +8,8 @@ import java.util.Map;
 
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.MalformedContentNameStringException;
+import org.openflow.protocol.OFCacheFull;
+import org.openflow.protocol.OFCacheFull.OFCacheFullEntryCmd;
 import org.openflow.protocol.OFCacheMod;
 import org.openflow.protocol.OFMatch20;
 import org.openflow.protocol.OFMatchX;
@@ -81,6 +83,7 @@ public class POFCCNx implements IOFMessageListener, IFloodlightModule, IPOFCCNxS
 	    listener = new POFCCNxListener();
 	    listener.setPofManager(pofManager);
 	    floodlightProvider.addOFSwitchListener(listener);
+	    floodlightProvider.addOFMessageListener(OFType.CACHE_FULL, this);
 	}
 	
 	
@@ -143,8 +146,7 @@ public class POFCCNx implements IOFMessageListener, IFloodlightModule, IPOFCCNxS
 
 	@Override
 	public String getName() {
-		// TODO Auto-generated method stub
-		return null;
+		return "POFCCNx";
 	}
 
 	@Override
@@ -162,8 +164,20 @@ public class POFCCNx implements IOFMessageListener, IFloodlightModule, IPOFCCNxS
 	@Override
 	public net.floodlightcontroller.core.IListener.Command receive(
 			IOFSwitch sw, OFMessage msg, FloodlightContext cntx) {
-		// TODO Auto-generated method stub
-		return null;
+		switch(msg.getType()) {
+        	case CACHE_FULL:
+        		OFCacheFull cacheFull = (OFCacheFull)msg;
+        		if (cacheFull.getCommand() == OFCacheFullEntryCmd.OFPCFAC_WARN.ordinal()){
+        			logger.debug("WARNING: CACHE QUASE ENCHENDO!!!");
+        		}else{
+        			logger.debug("CRITICAL: CACHE ENCHEU!!!");
+        		}
+        		break;
+        	default:
+        		break;
+		}
+		
+		return Command.CONTINUE;
 	}
 
 	@Override
