@@ -609,4 +609,6 @@ public interface IPMService extends IFloodlightService{
     
     public void iLogPacketInMessageOut(int switchId, OFPacketIn packetIn);
 
+	public int iSendCacheInfo(int switchId);
+
 }

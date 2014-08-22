@@ -54,6 +54,8 @@ import net.floodlightcontroller.threadpool.IThreadPoolService;
 
 import org.ccnx.ccn.protocol.ContentName;
 import org.jboss.netty.channel.Channel;
+import org.openflow.protocol.OFCacheInfo;
+import org.openflow.protocol.OFCacheInfo.OFCacheInfoEntryCmd;
 import org.openflow.protocol.OFCacheMod.OFCacheEntryCmd;
 import org.openflow.protocol.OFCounter;
 import org.openflow.protocol.OFCounter.OFCounterModCmd;
@@ -1287,6 +1289,34 @@ public class PofManager implements IFloodlightModule, IPMService {
         }
         
         return cacheEntryId;
+    }
+    
+    @Override
+    public int iSendCacheInfo(int switchId){
+    	return sendCacheInfo(switchId, true);
+    }
+    
+    private int sendCacheInfo(int switchId, boolean writeToSwitch){
+        try {
+    	   	//check the parameters
+        	if(false == switches.containsKey(switchId)){
+            	return CACHEENTRYID_INVALID;
+        	}
+            
+            if(true == writeToSwitch){
+                OFCacheInfo cacheInfo = new OFCacheInfo();
+                cacheInfo.setCommand((byte)OFCacheInfoEntryCmd.OFPCIAC_REQUEST.ordinal());
+            	
+                writeOf(switchId, cacheInfo);
+                
+                //for roll back
+                this.iAddSendedOFMessage(switchId, cacheInfo);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        
+        return 1;
     }
     
     public class CacheEntryGloablIDComparator implements Comparator<OFCacheMod> {

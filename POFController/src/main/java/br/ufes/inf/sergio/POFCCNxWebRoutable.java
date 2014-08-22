@@ -17,6 +17,7 @@ public class POFCCNxWebRoutable implements RestletRoutable {
 		router.attach("/addCache/", POFCCNxResource.class).setMatchingMode(Template.MODE_STARTS_WITH);
 		router.attach("/addStrictCache/", POFCCNxResource.class).setMatchingMode(Template.MODE_STARTS_WITH);
 		router.attach("/delCache/{id}", POFCCNxResource.class);
+		router.attach("/sendInfo/", POFCCNxResource.class);
         return router;
 	}
 

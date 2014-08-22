@@ -10,6 +10,8 @@ import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.MalformedContentNameStringException;
 import org.openflow.protocol.OFCacheFull;
 import org.openflow.protocol.OFCacheFull.OFCacheFullEntryCmd;
+import org.openflow.protocol.OFCacheInfo;
+import org.openflow.protocol.OFCacheInfo.OFCacheInfoEntryCmd;
 import org.openflow.protocol.OFCacheMod;
 import org.openflow.protocol.OFMatch20;
 import org.openflow.protocol.OFMatchX;
@@ -84,6 +86,7 @@ public class POFCCNx implements IOFMessageListener, IFloodlightModule, IPOFCCNxS
 	    listener.setPofManager(pofManager);
 	    floodlightProvider.addOFSwitchListener(listener);
 	    floodlightProvider.addOFMessageListener(OFType.CACHE_FULL, this);
+	    floodlightProvider.addOFMessageListener(OFType.CACHE_INFO, this);
 	}
 	
 	
@@ -173,6 +176,21 @@ public class POFCCNx implements IOFMessageListener, IFloodlightModule, IPOFCCNxS
         			logger.debug("CRITICAL: CACHE ENCHEU!!!");
         		}
         		break;
+        		
+        	case CACHE_INFO:
+        		OFCacheInfo cacheInfo = (OFCacheInfo)msg;
+        		if (cacheInfo.getCommand() == OFCacheInfoEntryCmd.OFPCIAC_REPLY.ordinal()){
+        			logger.debug("AEEEE, CHEGOU REPLY");
+        		}else{
+        			logger.debug("ERRRRRRROOOOOOOOOOOOO!");
+        		}
+        		
+        		ContentName[] entries = cacheInfo.getEntries();
+        		for (int i = 0; i < entries.length; i++) {
+        			System.out.println("Entry "+i+" = "+ entries[i].toString());
+        		}
+        		break;
+        		
         	default:
         		break;
 		}
@@ -200,5 +218,11 @@ public class POFCCNx implements IOFMessageListener, IFloodlightModule, IPOFCCNxS
 			return -1;
 		}
 		return cache.getIndex();
+	}
+	
+	@Override
+	public int sendInfo() {
+	    int switchId = pofManager.iGetAllSwitchID().get(0);
+	    return pofManager.iSendCacheInfo(switchId);
 	}
 }
