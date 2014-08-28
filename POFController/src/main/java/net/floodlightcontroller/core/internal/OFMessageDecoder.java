@@ -19,10 +19,12 @@ package net.floodlightcontroller.core.internal;
 
 import java.util.List;
 
+import org.ccnx.ccn.protocol.ContentName;
 import org.jboss.netty.buffer.ChannelBuffer;
 import org.jboss.netty.channel.Channel;
 import org.jboss.netty.channel.ChannelHandlerContext;
 import org.jboss.netty.handler.codec.frame.FrameDecoder;
+import org.openflow.protocol.OFCacheInfo;
 import org.openflow.protocol.OFMessage;
 import org.openflow.protocol.OFType;
 import org.openflow.protocol.factory.BasicFactory;
@@ -49,6 +51,7 @@ public class OFMessageDecoder extends FrameDecoder {
     protected Object decode(ChannelHandlerContext ctx, Channel channel,
                             ChannelBuffer buffer) throws Exception {
         
+    	buffer.markReaderIndex();
         List<OFMessage> message =
             factory.parseOFMessage(buffer);
         

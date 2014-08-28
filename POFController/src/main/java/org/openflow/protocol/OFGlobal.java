@@ -49,7 +49,8 @@ public class OFGlobal {
     /**
      * Define the max length of packetin. {@value}.
      */
-    public static final int OFP_PACKET_IN_MAX_LENGTH = 2048;
+    //public static final int OFP_PACKET_IN_MAX_LENGTH = 2048;
+    public static final int OFP_PACKET_IN_MAX_LENGTH = 204800;
 
     /**
      * Define the max length in byte unit of match field. {@value}.

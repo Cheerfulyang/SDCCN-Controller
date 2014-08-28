@@ -21,6 +21,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.jboss.netty.buffer.ChannelBuffer;
+import org.openflow.protocol.OFCacheInfo;
 import org.openflow.protocol.OFMessage;
 import org.openflow.protocol.OFType;
 import org.openflow.protocol.action.OFAction;
