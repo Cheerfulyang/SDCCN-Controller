@@ -8,6 +8,7 @@ import java.util.Map;
 
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.MalformedContentNameStringException;
+import org.openflow.protocol.CSEntry;
 import org.openflow.protocol.OFCacheFull;
 import org.openflow.protocol.OFCacheFull.OFCacheFullEntryCmd;
 import org.openflow.protocol.OFCacheInfo;
@@ -185,9 +186,9 @@ public class POFCCNx implements IOFMessageListener, IFloodlightModule, IPOFCCNxS
         			logger.debug("ERRRRRRROOOOOOOOOOOOO!");
         		}
         		
-        		ContentName[] entries = cacheInfo.getEntries();
+        		CSEntry[] entries = cacheInfo.getEntries();
         		for (int i = 0; i < entries.length; i++) {
-        			System.out.println("Entry "+i+" = "+ entries[i].toString());
+        			System.out.println(entries[i].getName() + ", " + entries[i].getCreated() + ", " + entries[i].getUpdated());
         		}
         		break;
         		
