@@ -54,6 +54,8 @@ import net.floodlightcontroller.threadpool.IThreadPoolService;
 
 import org.ccnx.ccn.protocol.ContentName;
 import org.jboss.netty.channel.Channel;
+import org.openflow.protocol.OFCSMod;
+import org.openflow.protocol.OFCSMod.OFCSEntryCmd;
 import org.openflow.protocol.OFCacheInfo;
 import org.openflow.protocol.OFCacheInfo.OFCacheInfoEntryCmd;
 import org.openflow.protocol.OFCacheMod.OFCacheEntryCmd;
@@ -1317,6 +1319,45 @@ public class PofManager implements IFloodlightModule, IPMService {
         }
         
         return 1;
+    }
+    
+    @Override
+    public int iDelCSEntry(int switchId, ContentName name){
+    	return delCSEntry(switchId, name, true);
+    }
+    
+    private int delCSEntry(int switchId, ContentName name, boolean writeToSwitch){
+        int csEntryId = 1;
+        try {
+        	if(null == database){
+        		return CACHEENTRYID_INVALID;
+        	}
+    	
+        	//check the parameters
+        	if(false == switches.containsKey(switchId)){
+            	return CACHEENTRYID_INVALID;
+        	}
+        	
+        	if(name == null){
+        			return CACHEENTRYID_INVALID;
+        	}
+       
+            if(true == writeToSwitch){
+                OFCSMod csMod = new OFCSMod();
+                csMod.setName(name);
+                csMod.setCommand((byte)OFCSEntryCmd.OFPCSC_DELETE.ordinal());
+            	
+                writeOf(switchId, csMod);
+                
+                //for roll back
+                this.iAddSendedOFMessage(switchId, csMod);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            csEntryId = CACHEENTRYID_INVALID;
+        }
+        
+        return csEntryId;
     }
     
     public class CacheEntryGloablIDComparator implements Comparator<OFCacheMod> {

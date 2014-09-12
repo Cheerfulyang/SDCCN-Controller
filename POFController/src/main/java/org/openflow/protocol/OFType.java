@@ -312,10 +312,15 @@ public enum OFType {
     								return new OFCacheFull();
     							}}),
 	CACHE_INFO        	(36, OFCacheInfo.class, new Instantiable<OFMessage>() {
-		@Override
-		public OFMessage instantiate() {
-			return new OFCacheInfo();
-		}});
+								@Override
+								public OFMessage instantiate() {
+									return new OFCacheInfo();
+								}}),
+	CS_MOD        		(37, OFCSMod.class, new Instantiable<OFMessage>() {
+								@Override
+								public OFMessage instantiate() {
+									return new OFCSMod();
+								}});
 
     static OFType[] mapping;
 

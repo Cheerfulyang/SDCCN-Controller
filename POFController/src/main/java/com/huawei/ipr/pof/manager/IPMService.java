@@ -611,4 +611,6 @@ public interface IPMService extends IFloodlightService{
 
 	public int iSendCacheInfo(int switchId);
 
+	public int iDelCSEntry(int switchId, ContentName name);
+
 }
