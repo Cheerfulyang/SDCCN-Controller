@@ -40,15 +40,14 @@ import net.floodlightcontroller.core.module.IFloodlightModule;
 import net.floodlightcontroller.core.module.IFloodlightService;
 import net.floodlightcontroller.restserver.IRestApiService;
 
-public class POFCCNx implements IOFMessageListener, IFloodlightModule, IPOFCCNxService {
+public class POFCCNxLRU implements IOFMessageListener, IFloodlightModule, IPOFCCNxService {
 	
 	protected IFloodlightProviderService floodlightProvider;
 	protected IRestApiService restApi;
 	protected static Logger logger;
 	protected IPMService pofManager;
-	//protected POFCCNxListener listener;
-	protected POFCCNxListenerExperimento listener;
-	
+	protected POFCCNxListener listener;
+
 	@Override
 	public Collection<Class<? extends IFloodlightService>> getModuleServices() {
 		Collection<Class<? extends IFloodlightService>> l = new ArrayList<Class<? extends IFloodlightService>>();
@@ -76,7 +75,7 @@ public class POFCCNx implements IOFMessageListener, IFloodlightModule, IPOFCCNxS
 	public void init(FloodlightModuleContext context)
 			throws FloodlightModuleException {
 		floodlightProvider = context.getServiceImpl(IFloodlightProviderService.class);
-		logger = LoggerFactory.getLogger(POFCCNx.class);
+		logger = LoggerFactory.getLogger(POFCCNxLRU.class);
 		restApi = context.getServiceImpl(IRestApiService.class);
 		pofManager = context.getServiceImpl(IPMService.class);
 	}
@@ -84,8 +83,7 @@ public class POFCCNx implements IOFMessageListener, IFloodlightModule, IPOFCCNxS
 	@Override
 	public void startUp(FloodlightModuleContext context) {
 	    restApi.addRestletRoutable(new POFCCNxWebRoutable());
-	    //listener = new POFCCNxListener();
-	    listener = new POFCCNxListenerExperimento();
+	    listener = new POFCCNxListener();
 	    listener.setPofManager(pofManager);
 	    floodlightProvider.addOFSwitchListener(listener);
 	    floodlightProvider.addOFMessageListener(OFType.CACHE_FULL, this);
@@ -152,7 +150,7 @@ public class POFCCNx implements IOFMessageListener, IFloodlightModule, IPOFCCNxS
 
 	@Override
 	public String getName() {
-		return "POFCCNx";
+		return "POFCCNxFIFO";
 	}
 
 	@Override
@@ -173,25 +171,31 @@ public class POFCCNx implements IOFMessageListener, IFloodlightModule, IPOFCCNxS
 		switch(msg.getType()) {
         	case CACHE_FULL:
         		OFCacheFull cacheFull = (OFCacheFull)msg;
-        		if (cacheFull.getCommand() == OFCacheFullEntryCmd.OFPCFAC_WARN.ordinal()){
-        			logger.debug("WARNING: CACHE QUASE ENCHENDO!!!");
-        		}else{
-        			logger.debug("CRITICAL: CACHE ENCHEU!!!");
-        		}
+//        		if (cacheFull.getCommand() == OFCacheFullEntryCmd.OFPCFAC_WARN.ordinal()){
+//        			logger.debug("WARNING: CACHE QUASE ENCHENDO!!!");
+//        		}else{
+//        			logger.debug("CRITICAL: CACHE ENCHEU!!!");
+//        		}
+        		this.sendInfo();
         		break;
         		
         	case CACHE_INFO:
         		OFCacheInfo cacheInfo = (OFCacheInfo)msg;
-        		if (cacheInfo.getCommand() == OFCacheInfoEntryCmd.OFPCIAC_REPLY.ordinal()){
-        			logger.debug("AEEEE, CHEGOU REPLY");
-        		}else{
-        			logger.debug("ERRRRRRROOOOOOOOOOOOO!");
-        		}
+//        		if (cacheInfo.getCommand() == OFCacheInfoEntryCmd.OFPCIAC_REPLY.ordinal()){
+//        			logger.debug("AEEEE, CHEGOU REPLY");
+//        		}else{
+//        			logger.debug("ERRRRRRROOOOOOOOOOOOO!");
+//        		}
         		
         		CSEntry[] entries = cacheInfo.getEntries();
-        		for (int i = 0; i < entries.length; i++) {
-        			System.out.println(entries[i].getName() + ", " + entries[i].getCreated() + ", " + entries[i].getUpdated());
+        		CSEntry lru = entries[0];
+        		for (int i = 1; i < entries.length; i++) {
+//        			System.out.println(entries[i].getName() + ", " + entries[i].getCreated() + ", " + entries[i].getUpdated());
+        			if (entries[i].getUpdated().before(lru.getUpdated())) {
+        				lru = entries[i];
+        			}
         		}
+        		removeCSEntry(lru.getName());
         		break;
         		
         	default:
@@ -227,5 +231,10 @@ public class POFCCNx implements IOFMessageListener, IFloodlightModule, IPOFCCNxS
 	public int sendInfo() {
 	    int switchId = pofManager.iGetAllSwitchID().get(0);
 	    return pofManager.iSendCacheInfo(switchId);
+	}
+	
+	public int removeCSEntry(ContentName name) {
+	    int switchId = pofManager.iGetAllSwitchID().get(0);
+	    return pofManager.iDelCSEntry(switchId, name);
 	}
 }
