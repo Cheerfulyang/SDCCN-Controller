@@ -28,6 +28,11 @@ import org.openflow.protocol.table.OFTableType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import br.ufes.inf.sergio.experimentos.strategy.POFCCNxListenerS1;
+import br.ufes.inf.sergio.experimentos.strategy.POFCCNxListenerS2;
+import br.ufes.inf.sergio.experimentos.strategy.POFCCNxListenerS3;
+import br.ufes.inf.sergio.experimentos.strategy.POFCCNxListenerS4;
+
 import com.huawei.ipr.pof.manager.IPMService;
 
 import net.floodlightcontroller.core.FloodlightContext;
@@ -47,7 +52,7 @@ public class POFCCNx implements IOFMessageListener, IFloodlightModule, IPOFCCNxS
 	protected static Logger logger;
 	protected IPMService pofManager;
 	//protected POFCCNxListener listener;
-	protected POFCCNxListenerExperimento listener;
+	protected List<POFCCNxListener> listeners;
 	
 	@Override
 	public Collection<Class<? extends IFloodlightService>> getModuleServices() {
@@ -79,75 +84,28 @@ public class POFCCNx implements IOFMessageListener, IFloodlightModule, IPOFCCNxS
 		logger = LoggerFactory.getLogger(POFCCNx.class);
 		restApi = context.getServiceImpl(IRestApiService.class);
 		pofManager = context.getServiceImpl(IPMService.class);
+		listeners = new ArrayList<POFCCNxListener>();
+		listeners.add(new POFCCNxListenerS1());
+		listeners.add(new POFCCNxListenerS2());
+		listeners.add(new POFCCNxListenerS3());
+		listeners.add(new POFCCNxListenerS4());
 	}
 
 	@Override
 	public void startUp(FloodlightModuleContext context) {
 	    restApi.addRestletRoutable(new POFCCNxWebRoutable());
 	    //listener = new POFCCNxListener();
-	    listener = new POFCCNxListenerExperimento();
-	    listener.setPofManager(pofManager);
-	    floodlightProvider.addOFSwitchListener(listener);
+	    for (POFCCNxListener listener : listeners) {
+		    listener.setPofManager(pofManager);
+		    floodlightProvider.addOFSwitchListener(listener);
+		}   
 	    floodlightProvider.addOFMessageListener(OFType.CACHE_FULL, this);
 	    floodlightProvider.addOFMessageListener(OFType.CACHE_INFO, this);
-	}
-	
-	
+	}	
 
 	@Override
 	public int addName(String name){
-		logger.debug("ADDING NAME "+name);
-		int res = 0;
-		int switchId = pofManager.iGetAllSwitchID().get(0); // FIXME descobrir switch mais proximo
-		Map<String, OFMatch20> fieldMap = listener.getFieldMap();
-		byte tableId = 0;
-		 
-		/*
-		 * Install flow in CCNx Interest and Content Tables
-		 */
-		OFFlowTable[] ofTables = new OFFlowTable[2];
-		ofTables[0] = listener.getCCNxInterestTable();
-		ofTables[1] = listener.getCCNxContentTable();
-
-		// faz matching do name
-		ArrayList<OFMatchX> matchXList = new ArrayList<OFMatchX>();
-		byte[] value = new byte[POFCCNxListener.CCNX_MAX_NAME_SIZE/8];
-		byte[] mask = new byte[POFCCNxListener.CCNX_MAX_NAME_SIZE/8];
-		byte[] str = null;
-		ContentName cname = null;
-		try {
-			cname = ContentName.fromURI("ccnx:/"+name);
-			str = cname.encode();
-		} catch (Exception e) {
-			e.printStackTrace();
-		}
-		logger.debug("NAME = "+String.valueOf(cname));
-		for (int i = 0; i < str.length - 2; i++){ // - 2 para eliminar 2 bytes de lixo no final
-			value[i] = str[i];
-			mask[i] = (byte) 0xff;
-		}
-		OFMatchX matchX = new OFMatchX(fieldMap.get("name"), value, mask);
-		matchXList.add(matchX);
-		
-		// output
-		List<OFInstruction> insList = new ArrayList<OFInstruction>();
-		OFInstruction ins = new OFInstructionApplyActions();
-		ArrayList<OFAction> actionList = new ArrayList<OFAction>();
-		OFAction action = new OFActionOutput();
-        ((OFActionOutput)action).setPortId(OFPort.OFPP_FLOOD.getValue());
-		((OFActionOutput)action).setPacketOffset((short)0);
-		actionList.add(action);
-		((OFInstructionApplyActions) ins).setActionList(actionList);
-		((OFInstructionApplyActions) ins).setActionNum((byte)actionList.size());
-		insList.add(ins);
-		
-		// add flow table
-		for (OFFlowTable n : ofTables){
-			tableId = pofManager.parseToGlobalTableId(switchId, OFTableType.OF_LPM_TABLE.getValue(), n.getTableId());
-			res |= pofManager.iAddFlowEntry(switchId, tableId, (byte)matchXList.size(), matchXList, 
-					(byte)insList.size(), insList, (short) 1);
-		}
-		return res;
+		return listeners.get(0).addName(name, OFPort.OFPP_FLOOD.getValue(), OFPort.OFPP_FLOOD.getValue());
 	}
 
 	@Override

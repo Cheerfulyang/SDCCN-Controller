@@ -38,10 +38,13 @@ public class POFCCNxListener implements IOFSwitchListener {
 	protected OFFlowTable ccnx_interest_table = null;
 	protected OFFlowTable ccnx_content_table = null;
 	protected Map<String, OFMatch20> fieldMap = null;
+	protected Map<String, Integer> portMap = null;
+	protected int dpid = 0;
 	
 	public POFCCNxListener() {
 		logger = LoggerFactory.getLogger(POFCCNxListener.class);
 		fieldMap = new HashMap<String, OFMatch20>(); 
+		portMap = new HashMap<String, Integer>();
 	}
 	
 	public void setPofManager(IPMService manager) {
@@ -60,23 +63,19 @@ public class POFCCNxListener implements IOFSwitchListener {
 		return this.fieldMap;
 	}
 
-	private void enableDataPort(int switchId) { // FIXME PEGAR DO ARQUIVO DE CONF
-		logger.debug("HABILITANDO O DATA PORT!");
+	protected void enableDataPort(int switchId) { // FIXME PEGAR DO ARQUIVO DE CONF
 		List<Integer> portIdList = pofManager.iGetAllPortId(switchId);
 		for (int portId : portIdList){
         	OFPortStatus portStatus = pofManager.iGetPortStatus(switchId, portId);
-        	//if (portStatus.getDesc().getName().matches("^veth\\d+$")){
-        	if (portStatus.getDesc().getName().matches("^veth0$")){
-        		pofManager.iSetPortOpenFlowEnable(switchId, portId, (byte)1);
-        		continue;
-            }
-            if (portStatus.getDesc().getName().matches("^s\\d+-eth\\d+$")){
+        	portMap.put(portStatus.getDesc().getName(), portId);
+            if (portStatus.getDesc().getName().matches("^s"+switchId+"-eth\\d+$")){
+            	logger.debug("HABILITANDO O DATA PORT PARA O SWITCH "+switchId+"! Porta "+portStatus.getDesc().getName()+" ID "+portId);
         		pofManager.iSetPortOpenFlowEnable(switchId, portId, (byte)1);
             }
         }
 	}
 	
-	private void createInitTables(int switchId) {
+	protected void createInitTables(int switchId) {
 		List<OFMatch20> fieldList;
 		List<OFMatchX> matchXList;
 		List<OFInstruction> insList;
@@ -260,8 +259,9 @@ public class POFCCNxListener implements IOFSwitchListener {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
-		enableDataPort((int)sw.getId());
-		createInitTables((int)sw.getId());
+		this.dpid = (int)sw.getId();
+		enableDataPort(dpid);
+		createInitTables(dpid);
 	}
 
 	@Override
@@ -272,5 +272,65 @@ public class POFCCNxListener implements IOFSwitchListener {
 	@Override
 	public String getName() {
 		return POFCCNxListener.class.getSimpleName();
+	}
+	
+	public int addName(String name, int portIdInterest, int portIdContent){
+		logger.debug("ADDING NAME "+name);
+		int res = 0;
+		byte tableId = 0;
+
+		// faz matching do name
+		ArrayList<OFMatchX> matchXList = new ArrayList<OFMatchX>();
+		byte[] value = new byte[POFCCNxListener.CCNX_MAX_NAME_SIZE/8];
+		byte[] mask = new byte[POFCCNxListener.CCNX_MAX_NAME_SIZE/8];
+		byte[] str = null;
+		ContentName cname = null;
+		try {
+			cname = ContentName.fromURI("ccnx:/"+name);
+			str = cname.encode();
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		for (int i = 0; i < str.length - 2; i++){ // - 2 para eliminar 2 bytes de lixo no final
+			value[i] = str[i];
+			mask[i] = (byte) 0xff;
+		}
+		OFMatchX matchX = new OFMatchX(fieldMap.get("name"), value, mask);
+		matchXList.add(matchX);
+		
+		// output
+		List<OFInstruction> insList = new ArrayList<OFInstruction>();
+		OFInstruction ins = new OFInstructionApplyActions();
+		ArrayList<OFAction> actionList = new ArrayList<OFAction>();
+		OFAction action = new OFActionOutput();
+        //((OFActionOutput)action).setPortId(OFPort.OFPP_FLOOD.getValue());
+		((OFActionOutput)action).setPortId(portIdInterest);
+		((OFActionOutput)action).setPacketOffset((short)0);
+		actionList.add(action);
+		((OFInstructionApplyActions) ins).setActionList(actionList);
+		((OFInstructionApplyActions) ins).setActionNum((byte)actionList.size());
+		insList.add(ins);
+		
+		// add flow to interest table
+		tableId = pofManager.parseToGlobalTableId(dpid, OFTableType.OF_LPM_TABLE.getValue(), getCCNxInterestTable().getTableId());
+		res |= pofManager.iAddFlowEntry(dpid, tableId, (byte)matchXList.size(), matchXList, 
+				(byte)insList.size(), insList, (short) 1);
+		
+		// add flow to content table
+		insList = new ArrayList<OFInstruction>();
+		ins = new OFInstructionApplyActions();
+		actionList = new ArrayList<OFAction>();
+		action = new OFActionOutput();
+		((OFActionOutput)action).setPortId(portIdContent);
+		((OFActionOutput)action).setPacketOffset((short)0);
+		actionList.add(action);
+		((OFInstructionApplyActions) ins).setActionList(actionList);
+		((OFInstructionApplyActions) ins).setActionNum((byte)actionList.size());
+		insList.add(ins);		
+		tableId = pofManager.parseToGlobalTableId(dpid, OFTableType.OF_LPM_TABLE.getValue(), getCCNxContentTable().getTableId());
+		res |= pofManager.iAddFlowEntry(dpid, tableId, (byte)matchXList.size(), matchXList, 
+				(byte)insList.size(), insList, (short) 1);
+			
+		return res;
 	}
 }

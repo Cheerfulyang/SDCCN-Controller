@@ -1,0 +1,41 @@
+package br.ufes.inf.sergio.experimentos.strategy;
+
+import net.floodlightcontroller.core.IOFSwitch;
+import net.floodlightcontroller.core.IOFSwitchListener;
+
+import org.slf4j.LoggerFactory;
+
+import br.ufes.inf.sergio.POFCCNxListener;
+
+public class POFCCNxListenerS3 extends POFCCNxListener implements IOFSwitchListener {
+	
+	private long id = 3;
+	
+	public POFCCNxListenerS3() {
+		super();
+		logger = LoggerFactory.getLogger(POFCCNxListenerS3.class);
+	}
+	
+	@Override
+	public void addedSwitch(IOFSwitch sw) {
+		if (sw.getId() != id){
+			return;
+		}
+		
+		super.addedSwitch(sw);
+		
+		// Cria regras de encaminhamento
+		try {
+			Thread.sleep(1000);
+		} catch (InterruptedException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		addName("sergio", portMap.get("s3-eth1"), portMap.get("s3-eth2"));
+	}
+
+	@Override
+	public String getName() {
+		return POFCCNxListenerS3.class.getSimpleName();
+	}
+}
