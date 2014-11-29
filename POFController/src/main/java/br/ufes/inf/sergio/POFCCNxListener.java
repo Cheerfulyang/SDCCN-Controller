@@ -37,6 +37,7 @@ public class POFCCNxListener implements IOFSwitchListener {
 	public final static String CCNX_FIRST_TABLE_NAME = "CCNx First Flow table";
 	protected OFFlowTable ccnx_interest_table = null;
 	protected OFFlowTable ccnx_content_table = null;
+	protected OFFlowTable ccnx_content_table2 = null;
 	protected Map<String, OFMatch20> fieldMap = null;
 	protected Map<String, Integer> portMap = null;
 	protected int dpid = 0;
@@ -180,7 +181,9 @@ public class POFCCNxListener implements IOFSwitchListener {
 		insList = new ArrayList<OFInstruction>();
 		ins = new OFInstructionGotoTable();
 		((OFInstructionGotoTable)ins).setNextTableId(nextTableId);
-		((OFInstructionGotoTable)ins).setPacketOffset((short)(2+136)); // type + Signature
+		((OFInstructionGotoTable)ins).setPacketOffset((short)(2+136)); // type + Signature P/ CCNPING
+		//((OFInstructionGotoTable)ins).setPacketOffset((short)(2+268)); // type + Signature P/ CCNPUTFILE
+		//((OFInstructionGotoTable)ins).setPacketOffset((short)(2+410)); // type + Signature P/ CCNPUTFILE
 		insList.add(ins);
 		matchXList = new ArrayList<OFMatchX>();
 		m = fieldMap.get("type");
@@ -190,6 +193,15 @@ public class POFCCNxListener implements IOFSwitchListener {
 		matchXList.add(matchX);
 		pofManager.iAddFlowEntry(switchId, globalTableId, (byte)matchXList.size(), matchXList, 
 				(byte)insList.size(), insList, (short) 1);
+		
+		/* Create CCNx Contente Table 2 - for bigger signatures */
+		nextTableId = pofManager.iAddFlowTable(switchId, "CCNx Content Flow Table 2", OFTableType.OF_LPM_TABLE.getValue(),
+				(short)CCNX_MAX_NAME_SIZE, TABLE_SIZE, (byte)fieldList.size(), fieldList);
+		if (nextTableId == -1){
+			logger.error("Failed to create CCNx Content Flow Table!");
+			System.exit(1);
+		}
+		ccnx_content_table2 = pofManager.iGetFlowTable(switchId, nextTableId);
 		
 		/*
 		 *  Create First Flow table. 
@@ -330,7 +342,24 @@ public class POFCCNxListener implements IOFSwitchListener {
 		tableId = pofManager.parseToGlobalTableId(dpid, OFTableType.OF_LPM_TABLE.getValue(), getCCNxContentTable().getTableId());
 		res |= pofManager.iAddFlowEntry(dpid, tableId, (byte)matchXList.size(), matchXList, 
 				(byte)insList.size(), insList, (short) 1);
-			
+		
+		/* Content Table 2 */
+		byte tableId2 = pofManager.parseToGlobalTableId(dpid, OFTableType.OF_LPM_TABLE.getValue(), ccnx_content_table2.getTableId());
+		res |= pofManager.iAddFlowEntry(dpid, tableId2, (byte)matchXList.size(), matchXList, 
+				(byte)insList.size(), insList, (short) 1);			
+		insList = new ArrayList<OFInstruction>();
+		ins = new OFInstructionGotoTable();
+		((OFInstructionGotoTable)ins).setNextTableId(tableId2);
+		((OFInstructionGotoTable)ins).setPacketOffset((short) 274); // Eth + IP + UDP
+		insList.add(ins);
+		matchXList = new ArrayList<OFMatchX>();
+		value = new byte[POFCCNxListener.CCNX_MAX_NAME_SIZE/8];
+		mask = new byte[POFCCNxListener.CCNX_MAX_NAME_SIZE/8];
+		matchX = new OFMatchX(fieldMap.get("name"), value, mask);
+		matchXList.add(matchX);
+		res |= pofManager.iAddFlowEntry(dpid, tableId, (byte)matchXList.size(), matchXList, 
+				(byte)insList.size(), insList, (short) 1);
+		
 		return res;
 	}
 }

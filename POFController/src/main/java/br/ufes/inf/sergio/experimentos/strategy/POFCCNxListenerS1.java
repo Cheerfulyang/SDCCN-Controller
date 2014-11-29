@@ -3,6 +3,7 @@ package br.ufes.inf.sergio.experimentos.strategy;
 import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.IOFSwitchListener;
 
+import org.openflow.protocol.OFPort;
 import org.slf4j.LoggerFactory;
 
 import br.ufes.inf.sergio.POFCCNxListener;
@@ -31,7 +32,8 @@ public class POFCCNxListenerS1 extends POFCCNxListener implements IOFSwitchListe
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
-		addName("sergio", portMap.get("s1-eth1"), portMap.get("s1-eth2"));
+		//addName("sergio", portMap.get("s1-eth1"), portMap.get("s1-eth2")); // Experimento 1
+		addName("sergio", OFPort.OFPP_FLOOD.getValue(), OFPort.OFPP_FLOOD.getValue()); // Experimento 2
 	}
 
 	@Override
