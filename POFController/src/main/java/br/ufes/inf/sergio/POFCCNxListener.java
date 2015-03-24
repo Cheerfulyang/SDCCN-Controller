@@ -287,6 +287,10 @@ public class POFCCNxListener implements IOFSwitchListener {
 	}
 	
 	public int addName(String name, int portIdInterest, int portIdContent){
+		return addName(name, portIdInterest, portIdContent, true);
+	}
+	
+	public int addName(String name, int portIdInterest, int portIdContent, boolean last){
 		logger.debug("ADDING NAME "+name);
 		int res = 0;
 		byte tableId = 0;
@@ -347,18 +351,20 @@ public class POFCCNxListener implements IOFSwitchListener {
 		byte tableId2 = pofManager.parseToGlobalTableId(dpid, OFTableType.OF_LPM_TABLE.getValue(), ccnx_content_table2.getTableId());
 		res |= pofManager.iAddFlowEntry(dpid, tableId2, (byte)matchXList.size(), matchXList, 
 				(byte)insList.size(), insList, (short) 1);			
-		insList = new ArrayList<OFInstruction>();
-		ins = new OFInstructionGotoTable();
-		((OFInstructionGotoTable)ins).setNextTableId(tableId2);
-		((OFInstructionGotoTable)ins).setPacketOffset((short) 274); // Eth + IP + UDP
-		insList.add(ins);
-		matchXList = new ArrayList<OFMatchX>();
-		value = new byte[POFCCNxListener.CCNX_MAX_NAME_SIZE/8];
-		mask = new byte[POFCCNxListener.CCNX_MAX_NAME_SIZE/8];
-		matchX = new OFMatchX(fieldMap.get("name"), value, mask);
-		matchXList.add(matchX);
-		res |= pofManager.iAddFlowEntry(dpid, tableId, (byte)matchXList.size(), matchXList, 
-				(byte)insList.size(), insList, (short) 1);
+		if (last) {
+			insList = new ArrayList<OFInstruction>();
+			ins = new OFInstructionGotoTable();
+			((OFInstructionGotoTable)ins).setNextTableId(tableId2);
+			((OFInstructionGotoTable)ins).setPacketOffset((short) 274); // Eth + IP + UDP
+			insList.add(ins);
+			matchXList = new ArrayList<OFMatchX>();
+			value = new byte[POFCCNxListener.CCNX_MAX_NAME_SIZE/8];
+			mask = new byte[POFCCNxListener.CCNX_MAX_NAME_SIZE/8];
+			matchX = new OFMatchX(fieldMap.get("name"), value, mask);
+			matchXList.add(matchX);
+			res |= pofManager.iAddFlowEntry(dpid, tableId, (byte)matchXList.size(), matchXList, 
+					(byte)insList.size(), insList, (short) 1);
+		}
 		
 		return res;
 	}

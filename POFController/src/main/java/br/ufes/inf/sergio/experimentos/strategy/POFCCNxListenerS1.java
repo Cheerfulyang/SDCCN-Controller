@@ -32,8 +32,13 @@ public class POFCCNxListenerS1 extends POFCCNxListener implements IOFSwitchListe
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
-		//addName("sergio", portMap.get("s1-eth1"), portMap.get("s1-eth2")); // Experimento 1
-		addName("sergio", OFPort.OFPP_FLOOD.getValue(), OFPort.OFPP_FLOOD.getValue()); // Experimento 2
+		addName("sergio2", portMap.get("s1-eth1"), portMap.get("s1-eth2"), false); // Experimento 1
+		addName("sergio3", portMap.get("s1-eth1"), portMap.get("s1-eth3"), false); // Experimento 1
+		addName("sergio4", portMap.get("s1-eth1"), portMap.get("s1-eth4"), false); // Experimento 1
+		addName("sergio5", portMap.get("s1-eth1"), portMap.get("s1-eth5"), false); // Experimento 1
+		addName("sergio6", portMap.get("s1-eth1"), portMap.get("s1-eth6"), false); // Experimento 1
+		addName("sergio7", portMap.get("s1-eth1"), portMap.get("s1-eth7"), true); // Experimento 1
+		//addName("sergio", OFPort.OFPP_FLOOD.getValue(), OFPort.OFPP_FLOOD.getValue()); // Experimento 2
 	}
 
 	@Override
