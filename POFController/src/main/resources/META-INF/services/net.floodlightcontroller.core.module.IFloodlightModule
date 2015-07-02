@@ -15,5 +15,6 @@ com.huawei.ipr.pof.gui.comm.POFGUI									#implements IFloodlightModule/IGUISer
 #net.floodlightcontroller.pktinhistory.PktInHistory
 net.floodlightcontroller.teste.Teste
 br.ufes.inf.sergio.POFCCNx
+br.ufes.inf.sergio.POFCCNxAgregacao
 br.ufes.inf.sergio.POFCCNxFIFO
 br.ufes.inf.sergio.POFCCNxLRU

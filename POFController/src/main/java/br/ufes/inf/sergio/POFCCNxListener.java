@@ -368,4 +368,14 @@ public class POFCCNxListener implements IOFSwitchListener {
 		
 		return res;
 	}
+	
+	public int addCache(String name, byte strict) {
+		try {
+			return pofManager.iAddCacheEntry(this.dpid, ContentName.fromURI("ccnx:/"+name), strict,
+					(short)0, (short)0, (short) 1);
+		} catch (MalformedContentNameStringException e) {
+			e.printStackTrace();
+		}
+		return -1;
+	}
 }
