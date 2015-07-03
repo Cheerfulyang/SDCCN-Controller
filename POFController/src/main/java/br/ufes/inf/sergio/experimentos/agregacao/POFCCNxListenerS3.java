@@ -36,16 +36,6 @@ public class POFCCNxListenerS3 extends POFCCNxListener implements IOFSwitchListe
 		}
 		addName("sergio", portMap.get("s3-eth3"), OFPort.OFPP_FLOOD.getValue());
 		//addCache("sergio", (byte) 0); // COMENTAR PARA A 2 FASE (AGREGACAO)
-		try {
-			Thread.sleep(5000);
-			addCSEntry(ContentName.fromURI("ccnx:/sergio/1"));
-		} catch (MalformedContentNameStringException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		} catch (InterruptedException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
 	}
 
 	@Override

@@ -137,6 +137,7 @@ public class POFCCNxAgregacao2Fase implements IOFMessageListener, IFloodlightMod
 	}
 	
 	public int sendInfo(long switchId) {
+		logger.debug("ENVIANDO INFO PARA SWITCH " +switchId);
 		return pofManager.iSendCacheInfo((int)switchId);
 	}
 	
@@ -153,17 +154,12 @@ public class POFCCNxAgregacao2Fase implements IOFMessageListener, IFloodlightMod
 			IOFSwitch sw, OFMessage msg, FloodlightContext cntx) {
 		switch(msg.getType()) {
         	case CACHE_FULL:
-        		// Pega dados do switch 1 e 2
-        		if (sw.getId() == 3)
-        		{
-        			this.sendInfo(3);
-        		}else{
-        			this.sendInfo(1);
-        			this.sendInfo(2);
-        		}
+        		logger.debug("CACHE FULLL DO SWITCH " +sw.getId());
+    			this.sendInfo(sw.getId());
         		break;
         		
         	case CACHE_INFO:
+        		logger.debug("CACHE INFO DO SWITCH " +sw.getId());
         		OFCacheInfo cacheInfo = (OFCacheInfo)msg;
         		CSEntry[] entries = cacheInfo.getEntries();
         		
@@ -192,19 +188,26 @@ public class POFCCNxAgregacao2Fase implements IOFMessageListener, IFloodlightMod
         		}
         		
         		// Move entradas duplicadas para o switch 3
-        		CSEntry[] entriesDuplicadas = new CSEntry[entries.length];
-        		for (int i = 0; i < entries.length; i++) {
-        			for (int j = 0; j < entries.length; j++){
-        				if (entries1[i].getName().equals(entries2[j].getName())){
-        					addCSEntry(3, entries1[i].getName());
-        					try {
-        					    Thread.sleep(30);
-        					} catch(InterruptedException ex) {
-        					    Thread.currentThread().interrupt();
-        					}
+        		int duplicadas = 0;
+        		for (int i = 0; i < entries1.length; i++) {
+        			for (int j = 0; j < entries2.length; j++){
+        				if (entries1[i].getName().toString().equals(entries2[j].getName().toString())){
+        					logger.debug("REMOVENDO ENTRADA " + entries1[i].getName());
                     		removeCSEntry(1, entries1[i].getName());
                     		removeCSEntry(2, entries1[i].getName());
+                			try {
+                				Thread.sleep(20);
+								addCSEntry(3, entries1[i].getName());
+							} catch (InterruptedException e) {
+								// TODO Auto-generated catch block
+								e.printStackTrace();
+							}
+                			duplicadas++;
+                			break;
         				}
+        			}
+        			if (duplicadas == 5){
+        				break;
         			}
         		}
         		
