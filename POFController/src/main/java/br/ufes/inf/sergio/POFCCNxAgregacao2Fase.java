@@ -1,10 +1,14 @@
 package br.ufes.inf.sergio;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+
+import javax.print.attribute.standard.DateTimeAtCompleted;
 
 import net.floodlightcontroller.core.FloodlightContext;
 import net.floodlightcontroller.core.IFloodlightProviderService;
@@ -45,8 +49,12 @@ public class POFCCNxAgregacao2Fase implements IOFMessageListener, IFloodlightMod
 	protected IPMService pofManager;
 	//protected POFCCNxListener listener;
 	protected List<POFCCNxListener> listeners;
-	protected CSEntry[] entries1;
-	protected CSEntry[] entries2;
+	protected List<CSEntry> entries1;
+	protected List<CSEntry> entries2;
+	protected List<CSEntry> entries3;
+	protected Date s1LastUpdate;
+	protected Date s2LastUpdate;
+	protected Date s3LastUpdate;
 	
 	@Override
 	public Collection<Class<? extends IFloodlightService>> getModuleServices() {
@@ -82,6 +90,9 @@ public class POFCCNxAgregacao2Fase implements IOFMessageListener, IFloodlightMod
 		listeners.add(new POFCCNxListenerS1());
 		listeners.add(new POFCCNxListenerS2());
 		listeners.add(new POFCCNxListenerS3());
+		s1LastUpdate = new Date();
+		s2LastUpdate = new Date();
+		s3LastUpdate = new Date();
 	}
 
 	@Override
@@ -142,6 +153,7 @@ public class POFCCNxAgregacao2Fase implements IOFMessageListener, IFloodlightMod
 	}
 	
 	public int removeCSEntry(long switchId, ContentName name) {
+		logger.debug("Removendo entry "+name +" do switch "+switchId);
 	    return pofManager.iDelCSEntry((int)switchId, name);
 	}
 	
@@ -155,6 +167,18 @@ public class POFCCNxAgregacao2Fase implements IOFMessageListener, IFloodlightMod
 		switch(msg.getType()) {
         	case CACHE_FULL:
         		logger.debug("CACHE FULLL DO SWITCH " +sw.getId());
+        		Date now = new Date();
+        		if ((sw.getId() == 1) && ((now.getTime()-s1LastUpdate.getTime())/1000 < 1)){
+        			break;
+        		}
+        		if ((sw.getId() == 2) && ((now.getTime()-s2LastUpdate.getTime())/1000 < 1)){
+        			break;
+        		}
+        		if (sw.getId() == 1){
+        			s1LastUpdate = new Date();
+        		}else if (sw.getId() == 1){
+        			s2LastUpdate = new Date();
+        		}
     			this.sendInfo(sw.getId());
         		break;
         		
@@ -177,9 +201,9 @@ public class POFCCNxAgregacao2Fase implements IOFMessageListener, IFloodlightMod
         		}
         		
         		if (sw.getId() == 1){
-        			entries1 = entries;
+        			entries1 = new ArrayList<CSEntry>(Arrays.asList(entries));
         		}else{
-        			entries2 = entries;
+        			entries2 = new ArrayList<CSEntry>(Arrays.asList(entries));;
         		}
         		
         		if ((entries1 == null) || (entries2 == null))
@@ -187,22 +211,36 @@ public class POFCCNxAgregacao2Fase implements IOFMessageListener, IFloodlightMod
         			break;
         		}
         		
+        		s1LastUpdate = new Date();
+        		s2LastUpdate = new Date();
         		// Move entradas duplicadas para o switch 3
         		int duplicadas = 0;
-        		for (int i = 0; i < entries1.length; i++) {
-        			for (int j = 0; j < entries2.length; j++){
-        				if (entries1[i].getName().toString().equals(entries2[j].getName().toString())){
-        					logger.debug("REMOVENDO ENTRADA " + entries1[i].getName());
-                    		removeCSEntry(1, entries1[i].getName());
-                    		removeCSEntry(2, entries1[i].getName());
+        		for (int i = 0; i < entries1.size(); i++) {
+        			for (int j = 0; j < entries2.size(); j++){
+        				if (entries1.get(i).getName().toString().equals(entries2.get(j).getName().toString())){
+        					logger.debug("REMOVENDO ENTRADA " + entries1.get(i).getName());
+                    		removeCSEntry(1, entries1.get(i).getName());
+                    		try {
+                				Thread.sleep(10);
+								addCSEntry(3, entries1.get(i).getName());
+							} catch (InterruptedException e) {
+								// TODO Auto-generated catch block
+								e.printStackTrace();
+							}
+                    		removeCSEntry(2, entries1.get(i).getName());
+                    		
                 			try {
-                				Thread.sleep(20);
-								addCSEntry(3, entries1[i].getName());
+                				Thread.sleep(10);
+								addCSEntry(3, entries1.get(i).getName());
 							} catch (InterruptedException e) {
 								// TODO Auto-generated catch block
 								e.printStackTrace();
 							}
                 			duplicadas++;
+                			
+                    		entries1.remove(i);
+                    		entries2.remove(j);
+                    		i--;
                 			break;
         				}
         			}
@@ -210,10 +248,9 @@ public class POFCCNxAgregacao2Fase implements IOFMessageListener, IFloodlightMod
         				break;
         			}
         		}
+        		s1LastUpdate = new Date();
+        		s2LastUpdate = new Date();
         		
-        		
-        		entries1 = null;
-        		entries2 = null;
         		break;
         		
         	default:
