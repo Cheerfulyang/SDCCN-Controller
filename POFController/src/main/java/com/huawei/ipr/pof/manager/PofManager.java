@@ -1360,6 +1360,45 @@ public class PofManager implements IFloodlightModule, IPMService {
         return csEntryId;
     }
     
+    @Override
+    public int iAddCSEntry(int switchId, ContentName name){
+    	return addCSEntry(switchId, name, true);
+    }
+    
+    private int addCSEntry(int switchId, ContentName name, boolean writeToSwitch){
+        int csEntryId = 1;
+        try {
+        	if(null == database){
+        		return CACHEENTRYID_INVALID;
+        	}
+    	
+        	//check the parameters
+        	if(false == switches.containsKey(switchId)){
+            	return CACHEENTRYID_INVALID;
+        	}
+        	
+        	if(name == null){
+    			return CACHEENTRYID_INVALID;
+        	}
+       
+            if(true == writeToSwitch){
+                OFCSMod csMod = new OFCSMod();
+                csMod.setName(name);
+                csMod.setCommand((byte)OFCSEntryCmd.OFPCSC_ADD.ordinal());
+            	
+                writeOf(switchId, csMod);
+                
+                //for roll back
+                this.iAddSendedOFMessage(switchId, csMod);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            csEntryId = CACHEENTRYID_INVALID;
+        }
+        
+        return csEntryId;
+    }
+    
     public class CacheEntryGloablIDComparator implements Comparator<OFCacheMod> {
 		@Override
 		public int compare(OFCacheMod entry1, OFCacheMod entry2) {

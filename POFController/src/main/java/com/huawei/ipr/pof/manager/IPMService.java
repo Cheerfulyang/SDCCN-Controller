@@ -613,4 +613,5 @@ public interface IPMService extends IFloodlightService{
 
 	public int iDelCSEntry(int switchId, ContentName name);
 
+	public int iAddCSEntry(int switchId, ContentName name);
 }

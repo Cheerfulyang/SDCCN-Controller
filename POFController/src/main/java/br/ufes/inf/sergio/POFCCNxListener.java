@@ -378,4 +378,8 @@ public class POFCCNxListener implements IOFSwitchListener {
 		}
 		return -1;
 	}
+	
+	public int addCSEntry(ContentName name) {
+	    return pofManager.iAddCSEntry(this.dpid, name);
+	}
 }
