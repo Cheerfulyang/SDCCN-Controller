@@ -32,4 +32,14 @@ public class CSEntry {
 	public Date getUpdated() {
 		return this.updated;
 	}
+	
+	@Override
+	public boolean equals(Object object2) {
+		if (!(object2 instanceof CSEntry)) {
+	        return false;
+	    }
+
+		CSEntry that = (CSEntry) object2;
+	    return this.getName().equals(that.getName());
+	}
 }
