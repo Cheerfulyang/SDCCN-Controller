@@ -379,7 +379,15 @@ public class POFCCNxListener implements IOFSwitchListener {
 		return -1;
 	}
 	
+	public void delCache(int index) {
+		pofManager.iDelCacheEntry(this.dpid, index);
+	}
+	
 	public int addCSEntry(ContentName name) {
 	    return pofManager.iAddCSEntry(this.dpid, name);
+	}
+	
+	public int removeCSEntry(ContentName name) {
+	    return pofManager.iDelCSEntry(this.dpid, name);
 	}
 }

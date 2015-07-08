@@ -285,7 +285,6 @@ public class PofManager implements IFloodlightModule, IPMService {
     
     private void writeOf(int switchDeviceId, List<OFMessage> of_msg_buffer) {
     	Channel channel = ofChannels.get(switchDeviceId);
-    	log.debug("AEE");
     	if(null != channel){
     		channel.write(of_msg_buffer);
     	}

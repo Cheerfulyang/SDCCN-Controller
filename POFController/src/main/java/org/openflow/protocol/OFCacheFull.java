@@ -4,7 +4,7 @@ import org.jboss.netty.buffer.ChannelBuffer;
 import org.openflow.util.HexString;
 
 public class OFCacheFull extends OFMessage implements Cloneable {
-    public static final int MINIMUM_LENGTH = OFMessage.MINIMUM_LENGTH + 40;  //48
+    public static final int MINIMUM_LENGTH = OFMessage.MINIMUM_LENGTH + 16;
     public static final int MAXIMAL_LENGTH = OFCacheFull.MINIMUM_LENGTH;
     
     public enum OFCacheFullEntryCmd {
@@ -19,8 +19,7 @@ public class OFCacheFull extends OFMessage implements Cloneable {
     public OFCacheFull() {
         super();
         this.type = OFType.CACHE_FULL;
-        //this.length = U16.t(MINIMUM_LENGTH);
-        this.length = MINIMUM_LENGTH;
+        this.length = length;
     }
     
     public int getLengthU() {

@@ -11,9 +11,9 @@ import org.openflow.util.HexString;
 import org.openflow.util.ParseString;
 
 public class OFCacheInfo extends OFMessage implements Cloneable {
-	public static final int MINIMUM_LENGTH = OFMessage.MINIMUM_LENGTH + 16;  //48
-    public static final int MAXIMAL_LENGTH = OFCacheInfo.MINIMUM_LENGTH + 20000;
-    public static final int POFLR_CACHE_MAX_ENTRIES = 50;
+	public static final int MINIMUM_LENGTH = OFMessage.MINIMUM_LENGTH + 16;
+    public static final int MAXIMAL_LENGTH = OFCacheInfo.MINIMUM_LENGTH + (OFGlobal.POFLR_CACHE_MAX_ENTRIES * OFGlobal.CCNX_MAX_NAME_SIZE);
+    
     
     public enum OFCacheInfoEntryCmd {
     	OFPCIAC_REQUEST,
@@ -27,13 +27,11 @@ public class OFCacheInfo extends OFMessage implements Cloneable {
     public OFCacheInfo() {
         super();
         this.type = OFType.CACHE_INFO;
-        //this.length = U16.t(MINIMUM_LENGTH);
-        //this.length = MINIMUM_LENGTH;
         this.length = MAXIMAL_LENGTH;
     }
     
     public int getLengthU() {
-        return MAXIMAL_LENGTH;
+        return this.length;
     }
 
     /**
@@ -71,13 +69,13 @@ public class OFCacheInfo extends OFMessage implements Cloneable {
         this.totalEntries = data.readInt();  
         data.readBytes(4);
         
-        byte[] name = new byte[OFGlobal.OFP_NAME_MAX_LENGTH * POFLR_CACHE_MAX_ENTRIES];
+        byte[] name = new byte[OFGlobal.CCNX_MAX_NAME_SIZE * OFGlobal.POFLR_CACHE_MAX_ENTRIES];
         data.readBytes(name);
         String fullName =  ParseString.ByteToString(name);
         String[] names = fullName.split("\n");
         this.entries = new CSEntry[totalEntries];
         
-        System.out.println("TOTALENTRIES = "+totalEntries+", fullName = "+fullName);
+        //System.out.println("TOTALENTRIES = "+totalEntries+", fullName = "+fullName);
         
         try {
         	for (int i = 0; i < totalEntries; i++) {

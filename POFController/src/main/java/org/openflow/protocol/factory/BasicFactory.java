@@ -90,6 +90,9 @@ public class BasicFactory implements OFMessageFactory, OFActionFactory, OFInstru
 
             if (demux.getLengthU() > data.readableBytes())
                 return ofm;
+            
+            if (demux.getType() == null)
+            	return ofm;
 
             ofm = getOFMessage(demux.getType());
             if (ofm == null)
@@ -108,6 +111,9 @@ public class BasicFactory implements OFMessageFactory, OFActionFactory, OFInstru
                 ((OFExperimenterDataFactoryAware)ofm).setExperimenterDataFactory(this);
             }
             ofm.readFrom(data);
+            if (ofm.getLengthU() > data.readableBytes())
+                return ofm;
+            
             if (OFMessage.class.equals(ofm.getClass())) {
                 // advance the position for un-implemented messages
                 data.readerIndex(data.readerIndex()+(ofm.getLengthU() -

@@ -17,8 +17,8 @@ import br.ufes.inf.sergio.POFCCNxListener;
 
 
 public class OFCacheMod extends OFMessage implements Cloneable {
-    public static final int MINIMUM_LENGTH = OFMessage.MINIMUM_LENGTH + 40;  //48
-    public static final int MAXIMAL_LENGTH = OFCacheMod.MINIMUM_LENGTH;
+    public static final int MINIMUM_LENGTH = OFMessage.MINIMUM_LENGTH + 16;
+    public static final int MAXIMAL_LENGTH = OFCacheMod.MINIMUM_LENGTH + OFGlobal.CCNX_MAX_NAME_SIZE;
     
     public enum OFCacheEntryCmd {
         OFPCAC_ADD,                  /* New Cache. */
@@ -37,8 +37,7 @@ public class OFCacheMod extends OFMessage implements Cloneable {
     public OFCacheMod() {
         super();
         this.type = OFType.CACHE_MOD;
-        //this.length = U16.t(MINIMUM_LENGTH);
-        this.length = MINIMUM_LENGTH;
+        this.length = MAXIMAL_LENGTH;
         this.name = new ContentName();
     }
     
@@ -163,6 +162,9 @@ public class OFCacheMod extends OFMessage implements Cloneable {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
+        
+        while(data.readableBytes() > 0)
+        	data.readByte();
     }
 
     @Override

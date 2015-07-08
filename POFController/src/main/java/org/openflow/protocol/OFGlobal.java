@@ -92,4 +92,7 @@ public class OFGlobal {
      */
     public static final int OFP_MAX_INSTRUCTION_LENGTH = (8 + 8 + OFP_MAX_ACTION_NUMBER_PER_INSTRUCTION * (OFP_MAX_ACTION_LENGTH + 4));
 
+	public static final int CCNX_MAX_NAME_SIZE = 128;
+	public static final int POFLR_CACHE_MAX_ENTRIES = 50;
+
 }

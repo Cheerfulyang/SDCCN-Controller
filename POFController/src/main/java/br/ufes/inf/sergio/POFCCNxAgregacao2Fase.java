@@ -55,6 +55,8 @@ public class POFCCNxAgregacao2Fase implements IOFMessageListener, IFloodlightMod
 	protected Date s1LastUpdate;
 	protected Date s2LastUpdate;
 	protected Date s3LastUpdate;
+	private Object lockCacheFull = new Object();
+	private Object lockCacheInfo = new Object();
 	
 	@Override
 	public Collection<Class<? extends IFloodlightService>> getModuleServices() {
@@ -93,6 +95,7 @@ public class POFCCNxAgregacao2Fase implements IOFMessageListener, IFloodlightMod
 		s1LastUpdate = new Date();
 		s2LastUpdate = new Date();
 		s3LastUpdate = new Date();
+		entries3 = new ArrayList<CSEntry>();
 	}
 
 	@Override
@@ -114,7 +117,7 @@ public class POFCCNxAgregacao2Fase implements IOFMessageListener, IFloodlightMod
 
 	@Override
 	public String getName() {
-		return "POFCCNxAgregacao";
+		return "POFCCNxAgregacao2Fase";
 	}
 
 	@Override
@@ -153,11 +156,23 @@ public class POFCCNxAgregacao2Fase implements IOFMessageListener, IFloodlightMod
 	}
 	
 	public int removeCSEntry(long switchId, ContentName name) {
+		try {
+			Thread.sleep(10);
+		} catch (InterruptedException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
 		logger.debug("Removendo entry "+name +" do switch "+switchId);
 	    return pofManager.iDelCSEntry((int)switchId, name);
 	}
 	
 	public int addCSEntry(long switchId, ContentName name) {
+		try {
+			Thread.sleep(10);
+		} catch (InterruptedException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
 	    return pofManager.iAddCSEntry((int)switchId, name);
 	}
 
@@ -166,123 +181,129 @@ public class POFCCNxAgregacao2Fase implements IOFMessageListener, IFloodlightMod
 			IOFSwitch sw, OFMessage msg, FloodlightContext cntx) {
 		switch(msg.getType()) {
         	case CACHE_FULL:
-        		logger.debug("CACHE FULLL DO SWITCH " +sw.getId());
-        		Date now = new Date();
-        		if ((sw.getId() == 1) && ((now.getTime()-s1LastUpdate.getTime())/1000 < 1)){
-        			break;
+        		synchronized(lockCacheFull){
+	        		//logger.debug("CACHE FULLL DO SWITCH " +sw.getId());
+	        		Date now = new Date();
+	        		if ((sw.getId() == 1) && ((now.getTime()-s1LastUpdate.getTime()) < 300)){
+	        			break;
+	        		}
+	        		if ((sw.getId() == 2) && ((now.getTime()-s2LastUpdate.getTime()) < 300)){
+	        			break;
+	        		}
+	        		if ((sw.getId() == 3) && ((now.getTime()-s3LastUpdate.getTime()) < 300)){
+	        			break;
+	        		}
+	        		
+	        		if (sw.getId() == 1){
+	        			s1LastUpdate = new Date();
+	        		}else if (sw.getId() == 1){
+	        			s2LastUpdate = new Date();
+	        		}else if (sw.getId() == 3){
+	        			s3LastUpdate = new Date();
+	        		}
+	    			this.sendInfo(sw.getId());
+	    			
+	        		break;
         		}
-        		if ((sw.getId() == 2) && ((now.getTime()-s2LastUpdate.getTime())/1000 < 1)){
-        			break;
-        		}
-        		
-        		if (((sw.getId() == 2)||(sw.getId() == 1)) && ((now.getTime()-s3LastUpdate.getTime())/1000 >= 2)){
-    				this.sendInfo(3);
-    				s3LastUpdate = new Date();
-        		}
-        		
-        		if (sw.getId() == 1){
-        			s1LastUpdate = new Date();
-        		}else if (sw.getId() == 1){
-        			s2LastUpdate = new Date();
-        		}
-    			this.sendInfo(sw.getId());
-    			
-        		break;
         		
         	case CACHE_INFO:
-        		logger.debug("CACHE INFO DO SWITCH " +sw.getId());
-        		OFCacheInfo cacheInfo = (OFCacheInfo)msg;
-        		List<CSEntry> entries = new ArrayList<CSEntry>(Arrays.asList(cacheInfo.getEntries()));
-        		List<CSEntry> entriesOutro;
-        		
-        		// Faz LRU no 3
-        		if (sw.getId() == 3)
-        		{
-        			s3LastUpdate = new Date();
-        			entries3 = new ArrayList<CSEntry>(entries);
-        			if (entries3.size() < 45){
-        				break;
-        			}
-        			CSEntry lru = entries.get(0);
-            		for (int i = 1; i < entries.size(); i++) {
-            			if (entries.get(i).getUpdated().before(lru.getUpdated())) {
-            				lru = entries.get(i);
-            			}
-            		}
-            		removeCSEntry(sw.getId(), lru.getName());
-            		s3LastUpdate = new Date();
-            		break;
-        		}
-        		
-        		if (sw.getId() == 1){
-        			entries1 = new ArrayList<CSEntry>(entries);
-        			entriesOutro = entries2;
-        		}else{
-        			entries2 = new ArrayList<CSEntry>(entries);
-        			entriesOutro = entries1;
-        		}
-        		
-        		if ((entries1 == null) || (entries2 == null) || (entries3 == null))
-        		{
-        			break;
-        		}
-        		
-        		s1LastUpdate = new Date();
-        		s2LastUpdate = new Date();
-        		CSEntry objeto;
-        		// Move entradas duplicadas para o switch 3
-        		int duplicadas = 0;
-        		for (int i = 0; i < entries.size(); i++) {
-        			objeto = entries.get(i);
-					logger.debug("ANALIZANDO ENTRADA " + objeto.getName() + " do switch " + sw.getId());
-        			if (entries3.contains(objeto)){
-    					logger.debug("SWITCH 3 JA TEM A ENTRADA " + objeto.getName());
-        				entries.remove(i);
-        				removeCSEntry(1, objeto.getName());
-    					removeCSEntry(2, objeto.getName());
-
-        				try {
-        					entriesOutro.remove(objeto);
-        				}
-        				catch (Exception e){
-        					System.out.println("EXCECAO: " + e);
-        					e.printStackTrace();
-        				}
-        				duplicadas++;
-        				i--;
-        			} else if (entriesOutro.contains(objeto)){
-    					logger.debug("ENTRADA DUPLICADA " + objeto.getName());
-        				entries.remove(i);
-        				removeCSEntry(1, objeto.getName());
-    					removeCSEntry(2, objeto.getName());
-
-        				try {
-        					entriesOutro.remove(objeto);
-        				}
-        				catch (Exception e){
-        					System.out.println("EXCECAO: " + e);
-        					e.printStackTrace();
-        				}
-        				
-        				try {
-            				Thread.sleep(10);
+        		synchronized(lockCacheInfo){
+	        		//logger.debug("CACHE INFO DO SWITCH " +sw.getId());
+	        		OFCacheInfo cacheInfo = (OFCacheInfo)msg;
+	        		List<CSEntry> entries;
+	        		List<CSEntry> entriesOutro;
+	        		int idOutro;
+	        		
+	        		// Faz LRU no 3
+	        		if (sw.getId() == 3)
+	        		{
+	        			s3LastUpdate = new Date();
+	        			entries3 = new ArrayList<CSEntry>(Arrays.asList(cacheInfo.getEntries()));
+	        			entries = entries3;
+	        			CSEntry lru = entries.get(0);
+	            		for (int i = 1; i < entries.size(); i++) {
+	            			if (entries.get(i).getUpdated().before(lru.getUpdated())) {
+	            				lru = entries.get(i);
+	            			}
+	            		}
+	            		removeCSEntry(sw.getId(), lru.getName());
+	            		entries3.remove(lru);
+	            		s3LastUpdate = new Date();
+	            		break;
+	        		}
+	        		
+	        		if (sw.getId() == 1){
+	        			entries1 = new ArrayList<CSEntry>(Arrays.asList(cacheInfo.getEntries()));
+	        			entries = entries1;
+	        			entriesOutro = entries2;
+	        			idOutro = 2;
+	        			s1LastUpdate = new Date();
+	        		}else{
+	        			entries2 = new ArrayList<CSEntry>(Arrays.asList(cacheInfo.getEntries()));
+	        			entries = entries2;
+	        			entriesOutro = entries1;
+	        			idOutro = 1;
+	        			s2LastUpdate = new Date();
+	        		}
+	        		
+	        		if ((entries1 == null) || (entries2 == null))
+	        		{
+	        			break;
+	        		}
+	        		
+	        		CSEntry objeto;
+	        		// Move entradas duplicadas para o switch 3
+	        		CSEntry lru = entries.get(0);
+	        		int i = 0;
+	        		for (i = 0; i < entries.size(); i++) {
+	        			objeto = entries.get(i);
+						//logger.debug("ANALIZANDO ENTRADA " + objeto.getName() + " do switch " + sw.getId());
+						if (objeto.getUpdated().before(lru.getUpdated())) {
+	        				lru = objeto;
+	        			}
+						
+	        			if (entries3.contains(objeto)){
+	    					//logger.debug("SWITCH 3 JA TEM A ENTRADA " + objeto.getName());
+	        				entries.remove(i);
+	        				removeCSEntry(sw.getId(), objeto.getName());
+        					boolean removido2 = entriesOutro.remove(objeto);
+        					if (removido2){
+        						removeCSEntry(idOutro, objeto.getName());
+        					}
+	        				i--;
+	        			} else if (entriesOutro.contains(objeto)){
+	    					//logger.debug("ENTRADA DUPLICADA " + objeto.getName());
+	        				entries.remove(i);
+	        				removeCSEntry(1, objeto.getName());
+	    					removeCSEntry(2, objeto.getName());
+	    					entriesOutro.remove(objeto);
 							addCSEntry(3, objeto.getName());
-						} catch (InterruptedException e) {
-							// TODO Auto-generated catch block
-							e.printStackTrace();
-						}
-            			duplicadas++;
-            			i--;
-        			}
-        			
-        			if (duplicadas == 5){
-        				break;
-        			}
+							CSEntry entry = new CSEntry();
+							entry.setName(objeto.getName());
+							entry.setCreated(objeto.getCreated());
+							entry.setUpdated(objeto.getUpdated());
+							entries3.add(entry);
+							s1LastUpdate = new Date();
+		        			s2LastUpdate = new Date();
+	            			i--;
+	        			}
+	        		}
+	        		
+	        		if (entries.size() >= 47){
+	            		removeCSEntry(sw.getId(), lru.getName());
+	            		entries.remove(lru);
+	            		if ((entries3.size() < 40) && !(entries3.contains(lru))){
+							addCSEntry(3, lru.getName());
+							CSEntry entry = new CSEntry();
+							entry.setName(lru.getName());
+							entry.setCreated(lru.getCreated());
+							entry.setUpdated(lru.getUpdated());
+							entries3.add(entry);
+	            		}
+	        		}
+	        		
+	        		break;
         		}
-        		s1LastUpdate = new Date();
-        		s2LastUpdate = new Date();
-        		
-        		break;
         		
         	default:
         		break;

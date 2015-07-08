@@ -35,7 +35,7 @@ public class POFCCNxListenerS3 extends POFCCNxListener implements IOFSwitchListe
 			e.printStackTrace();
 		}
 		addName("sergio", portMap.get("s3-eth3"), OFPort.OFPP_FLOOD.getValue());
-		//addCache("sergio", (byte) 0); // COMENTAR PARA A 2 FASE (AGREGACAO)
+		addCache("sergio", (byte) 0); // COMENTAR PARA A 2 FASE (AGREGACAO)
 	}
 
 	@Override
