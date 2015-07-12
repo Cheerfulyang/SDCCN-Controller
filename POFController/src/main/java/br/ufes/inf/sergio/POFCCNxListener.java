@@ -369,6 +369,51 @@ public class POFCCNxListener implements IOFSwitchListener {
 		return res;
 	}
 	
+	public int addName(String name, byte[] maskName, int portIdInterest){
+		logger.debug("ADDING NAME WITH MASK "+name);
+		int res = 0;
+		byte tableId = 0;
+
+		// faz matching do name
+		ArrayList<OFMatchX> matchXList = new ArrayList<OFMatchX>();
+		byte[] value = new byte[POFCCNxListener.CCNX_MAX_NAME_SIZE/8];
+		byte[] mask = new byte[POFCCNxListener.CCNX_MAX_NAME_SIZE/8];
+		byte[] str = null;
+		ContentName cname = null;
+		try {
+			cname = ContentName.fromURI("ccnx:/"+name);
+			str = cname.encode();
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		for (int i = 0; i < str.length - 2; i++){ // - 2 para eliminar 2 bytes de lixo no final
+			value[i] = str[i];
+			mask[i] = maskName[i];
+		}
+		OFMatchX matchX = new OFMatchX(fieldMap.get("name"), value, mask);
+		matchXList.add(matchX);
+		
+		// output
+		List<OFInstruction> insList = new ArrayList<OFInstruction>();
+		OFInstruction ins = new OFInstructionApplyActions();
+		ArrayList<OFAction> actionList = new ArrayList<OFAction>();
+		OFAction action = new OFActionOutput();
+        //((OFActionOutput)action).setPortId(OFPort.OFPP_FLOOD.getValue());
+		((OFActionOutput)action).setPortId(portIdInterest);
+		((OFActionOutput)action).setPacketOffset((short)0);
+		actionList.add(action);
+		((OFInstructionApplyActions) ins).setActionList(actionList);
+		((OFInstructionApplyActions) ins).setActionNum((byte)actionList.size());
+		insList.add(ins);
+		
+		// add flow to interest table
+		tableId = pofManager.parseToGlobalTableId(dpid, OFTableType.OF_LPM_TABLE.getValue(), getCCNxInterestTable().getTableId());
+		res |= pofManager.iAddFlowEntry(dpid, tableId, (byte)matchXList.size(), matchXList, 
+				(byte)insList.size(), insList, (short) 1);
+		
+		return res;
+	}
+	
 	public int addCache(String name, byte strict) {
 		try {
 			return pofManager.iAddCacheEntry(this.dpid, ContentName.fromURI("ccnx:/"+name), strict,
